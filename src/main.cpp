@@ -3,6 +3,10 @@
 #include <Adafruit_GFX.h>
 #include <Wire.h>
 #include <string>
+#include <iostream>
+#include <functional>
+
+
 
 class PiscaLed {
   int ledPin; // numero do pino do LED
@@ -50,9 +54,6 @@ public:
   }
 };
 
-PiscaLed led1(2, 100, 400);
-PiscaLed led2(4, 200, 600);
-
 
 
 class Display {
@@ -76,7 +77,6 @@ class Display {
         Title = newTitle;
         Message = newMessage;
         Adafruit_SSD1306 display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED);
-        Serial.begin(115200); // Apagar depois
 
         display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
         display.setTextColor(BLACK);
@@ -86,9 +86,9 @@ class Display {
         
         
         display.clearDisplay();
-        display.setCursor(2,2);
+        display.setCursor(2,4);
         // display.setFont();
-        display.fillRect(0, 0, 128, 16, WHITE);
+        display.fillRect(0, 0, 128, 16, 0x039F);
         display.print(Title);
         display.setTextColor(WHITE);
         display.setCursor(2, 40);
@@ -98,17 +98,147 @@ class Display {
     }
 };
 
+
+class Button {
+  int btnPin;
+  int8_t btnState;
+  unsigned long debounceDelay;
+  unsigned long lastDebounceTime = 0;
+
+public: 
+  Button(int pin, int debounce = 50)
+  {
+    btnPin = pin;
+    debounceDelay = debounce;
+
+    btnState = 0;
+    pinMode(btnPin, INPUT);
+  }
+
+  bool wasPressed(){
+    
+  }
+  bool isPressed(){
+
+  }
+
+  void DoSomething(std::function<void()> f_clickAction)
+  {
+    btnState = !btnState;
+    f_clickAction();
+  }
+};
+
+PiscaLed led1(2, 100, 400);
+PiscaLed led2(4, 200, 600);
+
+int buttonState = 1;
+int lastButtonState = 4;
+
+
+const int buttonPin = 17;
+unsigned long debounceDelay = 50;
+unsigned long lastDebounceTime = 0;
+
+String titles[] = {"Pizaaaaa", "Pudim de mandioca", "Mouse", "Coxinhaaaa"};
+String messages[] = {"Eh bao demaaas", "meu indigena na sua oca", "é rato em inglês", "de batata"};
+
+
 Display telinha("Titulo original", "Mensagem original");
 
 void setup() {
-
+  Serial.begin(9600); // Apagar depois
+  pinMode(buttonPin, INPUT);
 }
 
 void loop() {
   led1.Update();
   led2.Update();
-  telinha.Update("Pizaaaa", "Eh bao demaaas");
-  delay(3000);
-  telinha.Update("Coxinhaaaa", "de batata");
-  delay(3000);  
+
+
+
+  int reading = digitalRead(buttonPin);
+
+
+  Serial.clearWriteError();
+  delay(200);
+  
+  if (reading && (millis() - lastDebounceTime) > debounceDelay)
+  {
+    lastDebounceTime = millis();
+
+    if (lastDebounceTime == millis())
+    {
+      lastDebounceTime = lastDebounceTime + (debounceDelay + 10);
+    }
+    
+    Serial.println("Apertou butao: ");
+    Serial.println(buttonState);
+    Serial.println(lastButtonState);
+    // Serial.println(buttonState % lastButtonState);
+    Serial.println("---------____----------");
+    if (buttonState != lastButtonState && buttonState % lastButtonState <= 3){
+      telinha.Update(titles[buttonState -1], messages[buttonState -1]);
+      buttonState = buttonState + 1;
+    } else {
+      telinha.Update(titles[buttonState -1], messages[buttonState -1]);
+      buttonState = 1;
+    }
+    
+  }
+  
+
+  
+  
+  // Primeiro ajusta para não ter loop infinito
+  // if (reading != lastButtonState)
+  // {
+  //   Serial.println("Alterou o lastDebounceTime com millis();");
+  //   lastDebounceTime = millis();
+  // }
+  
+  // Serial.println("Loopando o looping!");
+
+  // if((millis() - lastDebounceTime) > debounceDelay){
+  //   Serial.println("Passou no primeiro IF");
+  //   if(reading != buttonState){
+  //     Serial.println("Passou no segundo IF");
+  //     buttonState = reading;
+
+  //     buttonRead = buttonRead + 1;
+      
+  //     Serial.println("Pizza");
+  //     if (buttonRead % 2 == 0)
+  //     {
+  //       Serial.println("Passou no primeiro IF");
+  //       telinha.Update("Pizaaaa123", "Eh bao demaaas");
+  //     } else if (buttonRead % 2 == 1) {
+  //       telinha.Update("Coxinhaaaa", "de batata");
+  //     }
+  //   }    
+  // }
+  
+  
+  // telinha.Update("Pizaaaa123", "Eh bao demaaas");
+  // if (buttonState != lastButtonState)
+  // {
+  //   if (buttonState == HIGH)
+  //   {
+  //     telinha.Update("Pizaaaa123", "Eh bao demaaas");
+  //   }else{
+
+  //     telinha.Update("Coxinhaaaa", "de batata");
+  //   }    
+  //   // delay(50);
+  //   lastButtonState = buttonState;
+  //   // delay(3000);
+  //   // delay(3000);
+  // }
+  // telinha.Update("Pizaaaa123", "Eh bao demaaas");
+  // delay(3000);
+
+  // telinha.Update("Coxinhaaaa", "de batata");
+
+  
+  // delay(3000);  
 }
