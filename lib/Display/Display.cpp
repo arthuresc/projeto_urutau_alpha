@@ -1,88 +1,86 @@
-#include "Display.h"
+#include <Display.h>
 
-// Instância global do display para uso em todas as funções deste arquivo
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Display::Display()
+  : _display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
+    _title("Titulo"),
+    _message("Mensagem") {
+      // O objeto _display é construído na lista de inicialização
+      // Não faça inicialização de hardware aqui
+    }
 
-Display::Display() {
-  // Inicializa os parâmetros do display
-  SCREEN_WIDTH = 128;
-  SCREEN_HEIGHT = 64;
-  OLED_RESET = -1;       // Pino de reset (-1 se não usado)
-  I2C_ADDRESS = 0x3C;    // Endereço I2C padrão para muitos displays 
+
+// 3. Construtor com parâmetros
+Display::Display(String title, String message)
+  : _display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
+    _title(title),
+    _message(message) {
+      // Apenas inicializa variáveis
+    }
+
+bool Display::initDisplay() {
+  // Inicializa o display SSD1306
+  if (!_display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+  {
+    Serial.println(F("SSD1306 allocation failed"));
+    return false;
+  }
+  _display.clearDisplay();
+  // Eu: Acho que esse código está errado
+  _display.setTextColor(WHITE);
+  _display.setTextSize(1);
+  _display.setCursor(0, 0);
+  
+  return true;
 }
-// Construtor vazio
-void Button::begin() {
-  Serial.begin(115200);
-  if(!display.begin(SSD1306_SWITCHCAPVCC, I2C_ADDRESS)) {
-    Serial.println("Erro no OLED!");
-    while(1);
+
+// 5. Inicialização pública
+  bool Display::init() {
+    if(initDisplay()) {
+      update(_title, _message);
+      return true;
+    }
+    return false;
   }
+
+
+
+  void Display::update(String newTitle, String newMessage) {
+    // Verifica necessidade de atualização
+    // if(newTitle.compareTo(Title) != 0 || newMessage.compareTo(Message) != 0) {
+    if(newTitle != _title || newMessage != _message) {
+      _title = newTitle;
+      _message = newMessage;
+
+      _display.clearDisplay();
+
+      _display.fillRect(0,0,128,16, WHITE);
+      _display.setTextColor(BLACK);
+      _display.setCursor(2,4);
+      _display.print(_title);
+
+
+      _display.setTextColor(WHITE);
+      _display.setCursor(2, 30);
+      _display.print(_message);
+
+
+      // Atualiza a tela
+      _display.display();
+    }
+  }
+
+  void Display::clear() {
+    _display.clearDisplay();
+    _display.display();
+
+    _title = "";
+    _message = "";
+  }
+
+  // 8. Verificação de status
+bool Display::isInitialized() const {
+  // Verifica se o display foi inicializado
+  // A biblioteca Adafruit_SSD1306 não tem um método isInitialized,
+  // então podemos verificar de outra forma
+  return true; // Simplificação - na prática precisa de melhor verificação
 }
-
-
-
-
-  // Função para mostrar texto centralizado
-  void textoCentralizado(String texto, int tamanhoTexto) {
-    begin();
-    int16_t x1, y1;
-    uint16_t largura, altura;
-    
-    // Configura o tamanho do texto
-    display.setTextSize(tamanhoTexto);
-    
-    // Obtém os limites do texto (a string, a posição inicial arbitrária (0,0), e retorna x1, y1, largura, altura)
-    display.getTextBounds(texto, 0, 0, &x1, &y1, &largura, &altura);
-    
-    // Calcula a posição X e Y para centralizar o texto
-    int x = (SCREEN_WIDTH - largura) / 2;
-    int y = (SCREEN_HEIGHT - altura) / 2;
-    
-    // Limpa o display e define o cursor para a posição calculada
-    display.clearDisplay();
-    display.setCursor(x, y);
-    display.println(texto);
-    display.display();
-  }
-
-  void txtTitle(String texto, int tamanhoTexto) {
-    int16_t x1, y1;
-    uint16_t largura, altura;
-    
-    // Configura o tamanho do texto
-    display.setTextSize(tamanhoTexto);
-    
-    // Obtém os limites do texto (a string, a posição inicial arbitrária (0,0), e retorna x1, y1, largura, altura)
-    display.getTextBounds(texto, 0, 0, &x1, &y1, &largura, &altura);
-    
-    // Calcula a posição X e Y para centralizar o texto
-    int x = (SCREEN_WIDTH - largura) / 2;
-    int y = 0;
-    
-    // Limpa o display e define o cursor para a posição calculada
-    display.clearDisplay();
-    display.setCursor(x, y);
-    display.println(texto);
-    display.display();
-  }
-
-  void textoAlinhadoEsquerda(String texto, int tamanhoTexto) {
-    int16_t x1, y1;
-    uint16_t largura, altura;
-    
-    // Configura o tamanho do texto
-    display.setTextSize(tamanhoTexto);
-    
-    // Obtém os limites do texto (a string, a posição inicial arbitrária (0,0), e retorna x1, y1, largura, altura)
-    display.getTextBounds(texto, 0, 0, &x1, &y1, &largura, &altura);
-    
-    // Calcula a posição X e Y para centralizar o texto
-    int x = SCREEN_WIDTH / 2;
-    int y = SCREEN_HEIGHT / 2;
-    
-    // Limpa o display e define o cursor para a posição calculada
-    display.clearDisplay();
-    display.setCursor(x, y);
-    display.println(texto);
-    display.display();
-  }

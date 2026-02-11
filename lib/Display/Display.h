@@ -1,40 +1,43 @@
-// #define BUTTON_H
-// #ifdef BUTTON_H
-
 #pragma once
 
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 #include <Arduino.h>
-
-#include <Wire.h>
-#include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+#include <Wire.h>
 
-// #define SCREEN_WIDTH 128
-// #define SCREEN_HEIGHT 64
-// #define OLED_RESET -1       // Pino de reset (-1 se não usado)
-// #define I2C_ADDRESS 0x3C
 
 class Display {
-  private:
-    uint8_t pin;
-    uint8_t SCREEN_WIDTH;
-    uint8_t SCREEN_HEIGHT;
-    uint8_t OLED_RESET;
-    uint8_t I2C_ADDRESS;
+private:
+  // 1. Objeto display como membro da classe
+  Adafruit_SSD1306 _display;
+  
+  // Dimensões como constantes (não variáveis)
+  static const int LARGURA_OLED = 128;
+  static const int ALTURA_OLED = 64;
+  static const int RESET_OLED = -1;
 
+  
+
+  String _title;
+  String _message;
+
+  bool initDisplay();
+  
   public:
-    Display();
+  // Construtor - apenas inicializa variáveis
+  // A inicialização real do hardware em init()
+  Display();
+  Display(String title, String message);
 
-    begin();
+  bool init();
+  bool init(String title, String message);
 
-    void textoCentralizado(String texto, int tamanhoTexto);
+  void update(String newTitle, String newMessage);
+  void clear();
 
-    // bool isPressed();
+  String getTitle() const { return _title; }
+  String getMessage() const { return _message; }
 
-    // bool readRaw();
+  bool isInitialized() const;
+
 };
-
-// #endif

@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <functional>
+#include <Display.h>
 
 
 
@@ -12,12 +13,12 @@ class PiscaLed {
   int ledPin; // numero do pino do LED
   long OnTime; // ms do tempo ligado
   long OffTime; // ms do tempo desligado
-
+  
   int ledState; // ledState usada para guardar o estado do LED
   unsigned long previousMillis; // vai guardar o ultimo acionamento do LED
-
-
-public:
+  
+  
+  public:
   PiscaLed(int pin, long on, long off)
   {
     ledPin = pin;
@@ -29,14 +30,14 @@ public:
     previousMillis = 0;
     pinMode(ledPin, OUTPUT);
   }
-
+  
   void Update()
   {
     // Faz a checagem para saber se já é o momento de alterar o estado do LED
     unsigned long currentMillis = millis();
     
-  
-
+    
+    
     if ((ledState == HIGH) && (currentMillis - previousMillis >= OnTime)) 
     {
       ledState = LOW; // Desliga o LED
@@ -56,189 +57,174 @@ public:
 
 
 
-class Display {
-  // Implementação futura
-  String Title;
-  String Message;
-  int LARGURA_OLED = 128;
-  int ALTURA_OLED = 64;
-  int RESET_OLED = -1;
-
-  public:
-    Display(String title, String message)
-    {
-      Title = title;
-      Message = message;
-    }
-
-    void Update(String newTitle, String newMessage)
-    {
-      if(newTitle.compareTo(Title) != 0 || newMessage.compareTo(Message) != 0) {
-        Title = newTitle;
-        Message = newMessage;
-        Adafruit_SSD1306 display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED);
-
-        display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-        display.setTextColor(BLACK);
-        // display.clearDisplay()
-        display.setTextSize(1);
-        
-        
-        
-        display.clearDisplay();
-        display.setCursor(2,4);
-        // display.setFont();
-        display.fillRect(0, 0, 128, 16, 0x039F);
-        display.print(Title);
-        display.setTextColor(WHITE);
-        display.setCursor(2, 40);
-        display.print(Message);
-        display.display();
-      }
-    }
-};
-
-
-class Button {
-  int btnPin;
-  int8_t btnState;
-  unsigned long debounceDelay;
-  unsigned long lastDebounceTime = 0;
-
-public: 
-  Button(int pin, int debounce = 50)
-  {
-    btnPin = pin;
-    debounceDelay = debounce;
-
-    btnState = 0;
-    pinMode(btnPin, INPUT);
-  }
-
-  bool wasPressed(){
+// class Display {
+//   // Implementação futura
+//   private:
+//   String Title;
+//   String Message;
+//   int LARGURA_OLED = 128;
+//   int ALTURA_OLED = 64;
+//   int RESET_OLED = -1;
+  
+//   Adafruit_SSD1306 display;
+  
+//   public:
+//   Display(String title = "Titulo", String message = "Mensagem")
+//   : display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED)
+//   {
+//     Title = title;
+//     Message = message;
     
-  }
-  bool isPressed(){
+    
+//     // Inicializa o display UMA VEZ no construtor
+//     if (!display.begin(SSD1306_SWITCHCAPVCC, 0X3C))
+//     {
+//       Serial.println("Falha no display OLED");
+//       while(1); // Trava o hardware se falhar
+//     }
+    
+//     // Mostra a mensagem inicial
+//     Update(Title, Message);
+    
+//   }
+  
+//   void Update(String newTitle, String newMessage)
+//   {
+//     // if(newTitle.compareTo(Title) != 0 || newMessage.compareTo(Message) != 0) {
+//     if(newTitle != Title || newMessage != Message) {
+//       Title = newTitle;
+//       Message = newMessage;
+      
+      
+//       display.clearDisplay();
+      
+      
+      
+//       display.setTextColor(BLACK);
+//       display.setTextSize(1);
+      
+      
+      
+//       display.fillRect(0, 0, 128, 16, WHITE);
+//       display.setTextColor(BLACK);
+//       display.setCursor(2,4);
+//       display.print(Title);
+      
+      
+//       display.setTextColor(WHITE);
+//       display.setCursor(2, 30);
+//       display.print(Message);
+      
+//       // Mostra na Tela
+//       display.display();
+//     }
+//   }
+  
+//   void Clear() {
+//     display.clearDisplay();
+//     display.display();
+//   }
+// };
 
-  }
 
-  void DoSomething(std::function<void()> f_clickAction)
-  {
-    btnState = !btnState;
-    f_clickAction();
-  }
-};
+// class Button {
+//   private:    
+//     byte _pin;
+//     unsigned long debounceDelay;
+//     unsigned long lastDebounceTime = 0;
+//     bool lastState = LOW;
+  
+  
+//   public: 
+//     Button(byte pin, int debounce = 50): _pin(pin), debounceDelay(debounce){
+//       pinMode(_pin, INPUT); // Mudar para INPUT_PULLUP
+//     }
+  
+//   // void begin() {
+//   //   pinMode(_pin, INPUT);
+//   // }
+  
+//   bool isPressed(){
+//     return digitalRead(_pin) == HIGH;
+//   }
+  
+//   // bool wasPressed(){
+//   //   static bool lastState = LOW;
+//   //   bool currentState = isPressed();
+//   //   bool pressed = (currentState == HIGH && lastState == LOW);
+//   //   bool debounced = (pressed && (millis() - lastDebounceTime) > debounceDelay);
+//   //   if (debounced)
+//   //   {
+//   //     delay(21);
+//   //     lastDebounceTime = millis();
+//   //     return true;
+//   //   }else{
+//   //     return false;
+//   //   }
+  
+//   // }
+  
+//   bool wasPressed() {
+//     bool currentState = isPressed();
+//     bool pressed = true;
+    
+//     if (currentState != lastState) 
+//     {
+//       if ((millis() - lastDebounceTime) > debounceDelay)
+//       {
+//         pressed = currentState;
+//         lastDebounceTime = millis();
+//       }
+//       lastState = currentState;
+//     }
+//     return pressed;    
+//   }
+  
+//   bool wasClicked() {
+//     static bool waitingForRelease = false;
+//     static unsigned long pressTime = 0;
+    
+//     if(isPressed() && !waitingForRelease) {
+//       waitingForRelease = true;
+//       pressTime = millis();
+//       return false;
+//     }
+    
+//     if (!isPressed() && waitingForRelease) {
+//       waitingForRelease = false;
+//       return (millis() - pressTime) < 500;
+//     }
+    
+//     return false;    
+//   }
+// };
 
-PiscaLed led1(2, 100, 400);
-PiscaLed led2(4, 200, 600);
 
-int buttonState = 1;
-int lastButtonState = 4;
-
-
-const int buttonPin = 17;
-unsigned long debounceDelay = 50;
-unsigned long lastDebounceTime = 0;
+int menuState = 0;
+int menuSize = 4;
 
 String titles[] = {"Pizaaaaa", "Pudim de mandioca", "Mouse", "Coxinhaaaa"};
 String messages[] = {"Eh bao demaaas", "meu indigena na sua oca", "é rato em inglês", "de batata"};
 
 
-Display telinha("Titulo original", "Mensagem original");
+// Display telinha("Titulo original", "Mensagem original");
 
+// Button btn(17);
+
+
+int vpin = analogRead(17);
+
+PiscaLed led1(2, 100, 400);
+PiscaLed led2(4, 200, 600);
 void setup() {
   Serial.begin(9600); // Apagar depois
-  pinMode(buttonPin, INPUT);
+  Serial.println("Sistema iniciando...");
+  // pinMode(13, INPUT_PULLUP);
 }
 
 void loop() {
   led1.Update();
   led2.Update();
 
-
-
-  int reading = digitalRead(buttonPin);
-
-
-  Serial.clearWriteError();
-  delay(200);
   
-  if (reading && (millis() - lastDebounceTime) > debounceDelay)
-  {
-    lastDebounceTime = millis();
-
-    if (lastDebounceTime == millis())
-    {
-      lastDebounceTime = lastDebounceTime + (debounceDelay + 10);
-    }
-    
-    Serial.println("Apertou butao: ");
-    Serial.println(buttonState);
-    Serial.println(lastButtonState);
-    // Serial.println(buttonState % lastButtonState);
-    Serial.println("---------____----------");
-    if (buttonState != lastButtonState && buttonState % lastButtonState <= 3){
-      telinha.Update(titles[buttonState -1], messages[buttonState -1]);
-      buttonState = buttonState + 1;
-    } else {
-      telinha.Update(titles[buttonState -1], messages[buttonState -1]);
-      buttonState = 1;
-    }
-    
-  }
-  
-
-  
-  
-  // Primeiro ajusta para não ter loop infinito
-  // if (reading != lastButtonState)
-  // {
-  //   Serial.println("Alterou o lastDebounceTime com millis();");
-  //   lastDebounceTime = millis();
-  // }
-  
-  // Serial.println("Loopando o looping!");
-
-  // if((millis() - lastDebounceTime) > debounceDelay){
-  //   Serial.println("Passou no primeiro IF");
-  //   if(reading != buttonState){
-  //     Serial.println("Passou no segundo IF");
-  //     buttonState = reading;
-
-  //     buttonRead = buttonRead + 1;
-      
-  //     Serial.println("Pizza");
-  //     if (buttonRead % 2 == 0)
-  //     {
-  //       Serial.println("Passou no primeiro IF");
-  //       telinha.Update("Pizaaaa123", "Eh bao demaaas");
-  //     } else if (buttonRead % 2 == 1) {
-  //       telinha.Update("Coxinhaaaa", "de batata");
-  //     }
-  //   }    
-  // }
-  
-  
-  // telinha.Update("Pizaaaa123", "Eh bao demaaas");
-  // if (buttonState != lastButtonState)
-  // {
-  //   if (buttonState == HIGH)
-  //   {
-  //     telinha.Update("Pizaaaa123", "Eh bao demaaas");
-  //   }else{
-
-  //     telinha.Update("Coxinhaaaa", "de batata");
-  //   }    
-  //   // delay(50);
-  //   lastButtonState = buttonState;
-  //   // delay(3000);
-  //   // delay(3000);
-  // }
-  // telinha.Update("Pizaaaa123", "Eh bao demaaas");
-  // delay(3000);
-
-  // telinha.Update("Coxinhaaaa", "de batata");
-
-  
-  // delay(3000);  
 }

@@ -13,6 +13,11 @@ class Button {
     unsigned long lastDebounceTime;
     unsigned long debounceDelay;
 
+//  byte _pin;
+//  unsigned long debounceDelay;
+//  unsigned long lastDebounceTime = 0;
+//  bool lastState = LOW;
+
   public:
     Button(uint8_t buttonPin, unsigned long debounceMs = 50);
 
@@ -21,6 +26,8 @@ class Button {
     bool wasPressed();
 
     bool isPressed();
+
+    bool wasClicked();
 
     bool readRaw();
 };
