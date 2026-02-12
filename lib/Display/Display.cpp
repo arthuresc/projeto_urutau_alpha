@@ -7,14 +7,11 @@
 #include <Wire.h>
 
 Display::Display()
-  : display(128, 64, &Wire, -1),
+  : display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
     _title("Titulo"),
     _message("Mensagem") {
       // O objeto display é construído na lista de inicialização
-      // Não faça inicialização de hardware aqui
-      // display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-      // init();
-      
+      // Não faça inicialização de hardware aqui      
     }
     
     
@@ -23,8 +20,7 @@ Display::Display(String title, String message)
   : display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
     _title(title),
     _message(message) {
-      // init();
-    // this->display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+
   }
 
 bool Display::initDisplay()

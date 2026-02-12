@@ -64,12 +64,14 @@ String messages[] = {"Eh bao demaaas", "meu indigena na sua oca", "é rato em in
 // Button btn(17);
 
 
-// int vpin = analogRead(17);
+int vpin = 25;
+int val = 0;
+int menuState = 0;
 Display telinha;
 
 
 PiscaLed led1(2, 100, 400);
-PiscaLed led2(4, 200, 600);
+PiscaLed led2(4, 100, 400);
 void setup() {
   Serial.begin(9600); // Apagar depois
   Serial.println("Sistema iniciando...");
@@ -78,7 +80,31 @@ void setup() {
 }
 
 void loop() {
-  led1.Update();
-  led2.Update();
-  telinha.update("Piranhaaaa", "Eh um bixo que vive no rio amazonas");
+  // led1.Update();
+  // led2.Update();
+  // Serial.println(vpin);
+  val = analogRead(vpin);
+
+
+  if (val < 2800 && val > 2500)
+  {
+    menuState = menuState + 1;
+    led1.Update();
+  }
+  
+  if (val > 1200 && val < 1500)
+  {
+    telinha.update((titles[menuState % sizeof(menuState)] + " ★"), (messages[menuState % sizeof(menuState)] + " ★"));
+    delay(1000);
+  }
+  
+  if (val >= 0 && val < 60)
+  {
+    menuState = menuState - 1;
+    led2.Update();
+  }
+  
+  Serial.println(val);
+  telinha.update(titles[menuState % sizeof(menuState)], messages[menuState % sizeof(menuState)]);
+  delay(200);
 }
