@@ -9,12 +9,15 @@
 class Display {
 private:
   // 1. Objeto display como membro da classe
-  Adafruit_SSD1306 _display;
+  // Use a pointer and construct the Adafruit_SSD1306 instance in the .cpp to avoid the "most vexing parse"
+
+  Adafruit_SSD1306 display; 
   
-  // Dimensões como constantes (não variáveis)
   static const int LARGURA_OLED = 128;
   static const int ALTURA_OLED = 64;
   static const int RESET_OLED = -1;
+  
+  // Dimensões como constantes (não variáveis)
 
   
 
@@ -22,6 +25,8 @@ private:
   String _message;
 
   bool initDisplay();
+  // void printTitle();
+  // void printMessage();
   
   public:
   // Construtor - apenas inicializa variáveis
@@ -30,7 +35,7 @@ private:
   Display(String title, String message);
 
   bool init();
-  bool init(String title, String message);
+  // bool init(String title, String message);
 
   void update(String newTitle, String newMessage);
   void clear();

@@ -1,48 +1,60 @@
 #include <Display.h>
 
+
+#include <Arduino.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+#include <Wire.h>
+
 Display::Display()
-  : _display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
+  : display(128, 64, &Wire, -1),
     _title("Titulo"),
     _message("Mensagem") {
-      // O objeto _display é construído na lista de inicialização
+      // O objeto display é construído na lista de inicialização
       // Não faça inicialização de hardware aqui
+      // display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+      // init();
+      
     }
-
-
-// 3. Construtor com parâmetros
+    
+    
+    // 3. Construtor com parâmetros
 Display::Display(String title, String message)
-  : _display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
+  : display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
     _title(title),
     _message(message) {
-      // Apenas inicializa variáveis
-    }
+      // init();
+    // this->display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  }
 
-bool Display::initDisplay() {
+bool Display::initDisplay()
+{
   // Inicializa o display SSD1306
-  if (!_display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
   {
     Serial.println(F("SSD1306 allocation failed"));
     return false;
   }
-  _display.clearDisplay();
+  Serial.println("Teste aqui no initDisplay");
+  display.clearDisplay();
   // Eu: Acho que esse código está errado
-  _display.setTextColor(WHITE);
-  _display.setTextSize(1);
-  _display.setCursor(0, 0);
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 0);
   
   return true;
 }
 
 // 5. Inicialização pública
   bool Display::init() {
+  Serial.println("Iniciou o inicio");
     if(initDisplay()) {
       update(_title, _message);
+      Serial.println("Teste aqui no INIT não o outro");
       return true;
     }
     return false;
   }
-
-
 
   void Display::update(String newTitle, String newMessage) {
     // Verifica necessidade de atualização
@@ -50,28 +62,30 @@ bool Display::initDisplay() {
     if(newTitle != _title || newMessage != _message) {
       _title = newTitle;
       _message = newMessage;
+      
+      Serial.println("Entrou como texto no update");
 
-      _display.clearDisplay();
+      display.clearDisplay();
 
-      _display.fillRect(0,0,128,16, WHITE);
-      _display.setTextColor(BLACK);
-      _display.setCursor(2,4);
-      _display.print(_title);
+      display.fillRect(0,0,128,16, WHITE);
+      display.setTextColor(BLACK);
+      display.setCursor(2,4);
+      display.print(_title);
 
 
-      _display.setTextColor(WHITE);
-      _display.setCursor(2, 30);
-      _display.print(_message);
+      display.setTextColor(WHITE);
+      display.setCursor(2, 30);
+      display.print(_message);
 
 
       // Atualiza a tela
-      _display.display();
+      display.display();
     }
   }
 
   void Display::clear() {
-    _display.clearDisplay();
-    _display.display();
+    display.clearDisplay();
+    display.display();
 
     _title = "";
     _message = "";
