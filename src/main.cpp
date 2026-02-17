@@ -8,6 +8,8 @@
 #include <Display.h>
 
 
+#include <Adafruit_AHTX0.h>
+#include <Fonts/FreeSans9pt7b.h>
 
 class PiscaLed {
   int ledPin; // numero do pino do LED
@@ -56,19 +58,17 @@ class PiscaLed {
 };
 
 
-String titles[] = {"Pizaaaaa", "Pudim de mandioca", "Mouse", "Coxinhaaaa"};
-String messages[] = {"Eh bao demaaas", "meu indigena na sua oca", "é rato em inglês", "de batata"};
-
-
-
-// Button btn(17);
-
-
 int vpin = 25;
 int val = 0;
 int menuState = 0;
+
+Adafruit_AHTX0 aht;
+
 Display telinha;
 
+
+String titles[] = {"Pizaaaaa", "Pudim de mandioca", "Mouse", "Coxinhaaaa"};
+String messages[] = {"Eh bao demaaas", "meu indigena na sua oca", "é rato em inglês", "de batata"};
 
 PiscaLed led1(2, 100, 400);
 PiscaLed led2(4, 100, 400);
@@ -77,6 +77,14 @@ void setup() {
   Serial.println("Sistema iniciando...");
   // pinMode(13, INPUT_PULLUP);
   telinha.init();
+
+  if (aht.begin())
+  {
+    Serial.println("Iniciado AHT10");
+  }else{
+    Serial.println("AHT10 não encontrado");
+  }
+  
 }
 
 void loop() {
@@ -84,15 +92,21 @@ void loop() {
   // led2.Update();
   // Serial.println(vpin);
   val = analogRead(vpin);
+  sensors_event_t humidity, temp;
+  aht.getEvent(&humidity, &temp);
 
-
-  if (val < 2800 && val > 2500)
+  Serial.println(val);
+  // Valores adotados em casa meu pc
+  // if (val < 2800 && val > 2500) 
+  // Valores no note da Iza
+  if (val < 1900 && val > 1500)
   {
     menuState = menuState + 1;
     led1.Update();
   }
   
-  if (val > 1200 && val < 1500)
+  // if (val > 1200 && val < 1500)
+  if (val > 800 && val < 1000)
   {
     telinha.update((titles[menuState % sizeof(menuState)] + " ★"), (messages[menuState % sizeof(menuState)] + " ★"));
     delay(1000);
@@ -104,7 +118,8 @@ void loop() {
     led2.Update();
   }
   
-  Serial.println(val);
+  Serial.println(humidity.relative_humidity);
+  Serial.println(temp.temperature);
   telinha.update(titles[menuState % sizeof(menuState)], messages[menuState % sizeof(menuState)]);
   delay(200);
 }
