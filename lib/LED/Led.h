@@ -4,17 +4,14 @@
 
 class Led {
   private:
-    int pin;
+    uint8_t pin;
     bool state;
 
   public:
-    Led(int ledPin);
-
+    explicit Led(uint8_t pin);
     void set(bool newState);
-
-    void begin();
-
-    void blink();
-
+    // void blink();
     void toggle();
+    void on();
+    void off();
 };
