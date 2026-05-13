@@ -16,7 +16,12 @@ void Led::set(bool newState) {
   digitalWrite(pin, state);
 }
 
-void on() {
+void Led::on() {
+  state = true;
   digitalWrite(pin, HIGH);
 }
 
+void Led::off() {
+  state = false;
+  digitalWrite(pin, LOW);
+}

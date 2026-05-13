@@ -36,6 +36,7 @@ void loop() {
   if (botao.wasPressed()) {
     Serial.println("Botão pressionado!");
     display.update("Sistema", "Botao pressionado");
+    led.toggle();
     // Futuramente, isso vai pro MenuManager
   }
 
