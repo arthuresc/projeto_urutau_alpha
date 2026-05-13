@@ -5,7 +5,9 @@ Button::Button(uint8_t buttonPin, unsigned long debounceMs)
 lastStableState(HIGH), 
 lastRawState(HIGH), 
 lastDebounceTime(0), 
-debounceDelay(debounceMs){}
+debounceDelay(debounceMs){
+  pinMode(pin, INPUT_PULLUP);
+}
 
 void Button::begin() {
   pinMode(pin, INPUT_PULLUP);

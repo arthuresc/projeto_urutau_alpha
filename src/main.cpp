@@ -2,69 +2,110 @@
 #include "Button.h"
 #include "Led.h"
 #include "Display.h"
+#include "Rele.h"
+#include "MenuManager.h"
 
-// ----- Configuração de Hardware -----
-#define PIN_LED 2
-#define PIN_BOTAO 15
+// ----- Hardware -----
+#define PIN_LED        2
+#define PIN_BOTAO_UP   13
+#define PIN_BOTAO_DOWN 14
+#define PIN_BOTAO_ENTER 15
 
 // ----- Componentes -----
-Led led(PIN_LED);
-Button botao(PIN_BOTAO);
-Display display; // sua classe Display (já existente)
+Button btDown(PIN_BOTAO_DOWN);
+Button btUp(PIN_BOTAO_UP);
+Button btEnter(PIN_BOTAO_ENTER);
+Led ledInterno(PIN_LED);
+Display display;
+Rele luz(4);   // Substitua pelo pino do relé da luz
+MenuManager menu;
 
-// ----- Controle de tempo NÃO BLOQUEANTE -----
-unsigned long ultimoPisca = 0;
-const unsigned long intervaloPisca = 5500; // pisca a cada 500 ms
-bool estadoLed = false;
+// ----- Callbacks das ações -----
+void acaoLigarLuz() {
+    luz.ligar();
+    Serial.println("Ação: Ligar Luz");
+    display.update("Menu", "Luz LIGADA");
+}
 
+void acaoDesligarLuz() {
+    luz.desligar();
+    Serial.println("Ação: Desligar Luz");
+    display.update("Menu", "Luz DESLIGADA");
+}
+
+void acaoPiscarLed() {
+    // Pisca rápido o LED interno apenas uma vez
+    ledInterno.on();
+    delay(200);
+    ledInterno.off();
+    Serial.println("Ação: Piscar LED");
+    display.update("Menu", "Piscou LED");
+}
+
+// ----- Menu (estrutura) -----
+MenuItem menuLuz[] = {
+    {"LIGAR LUZ", acaoLigarLuz, {}},
+    {"DESLIGAR LUZ", acaoDesligarLuz, {}}
+};
+
+MenuItem menuTeste[] = {
+    {"PISCAR LED", acaoPiscarLed, {}}
+};
+
+MenuItem menuRaiz[] = {
+    {"LUZ", nullptr, {menuLuz[0], menuLuz[1]}},
+    {"TESTE", nullptr, {menuTeste[0]}}
+};
+
+// ----- Variáveis de tempo -----
 unsigned long ultimoDisplay = 0;
-const unsigned long intervaloDisplay = 1000; // atualiza display a cada 1s
+const unsigned long intervaloDisplay = 500;
 
 void setup() {
-  Serial.begin(9600);
-  Serial.println("Sistema Grow Indoor - Loop Não Bloqueante");
+    Serial.begin(9600);
+    Serial.println("Sistema com Menu - Teste");
 
-  display.init(); // Supondo que sua classe Display tenha um método init()
-  display.update("Sistema","Sistema OK");
+    display.init();
+
+    // Cria o menu raiz (contêiner)
+    static MenuItem raizContainer = {"HOME", nullptr, {menuRaiz[0], menuRaiz[1]}};
+    menu.setRaiz(raizContainer);
+
+    // Exibe estado inicial
+    menu.atualizarDisplay();
 }
 
 void loop() {
-  unsigned long agora = millis();
-
-  // 1. Leitura de botão (SEM delay!)
-  // botao.update(); // assumindo que sua classe Button tem update() para debounce
-  if (botao.wasPressed()) {
-    Serial.println("Botão pressionado!");
-    display.update("Sistema", "Botao pressionado");
-    led.toggle();
-    // Futuramente, isso vai pro MenuManager
-  }
-
-  // 2. Pisca LED sem delay
-  if (agora - ultimoPisca >= intervaloPisca) {
-    ultimoPisca = agora;
-    estadoLed = !estadoLed;
-    // String msgEstado = "Entrou aqui no LED" + estadoLed;
-    Serial.print("LED");
-
-    if (!estadoLed){ 
-      led.toggle();
-      display.update("Sistema", "led on");
+    // Leitura não bloqueante dos botões
+    if (btUp.wasPressed()) {
+        Serial.println("APERTOU BOTAO AZUL");
+        menu.navegar(-1);
+        menu.atualizarDisplay();
     }
-    else {
-      led.toggle();
-      display.update("Sistema", "led OFF");
+    if (btDown.wasPressed()) {
+        menu.navegar(1);
+        menu.atualizarDisplay();
     }
-  }
+    if (btEnter.wasPressed()) {
+        menu.selecionar();
+        menu.atualizarDisplay();
+    }
 
-  // 3. Atualiza display periodicamente (sem delay)
-  if (agora - ultimoDisplay >= intervaloDisplay) {
-    ultimoDisplay = agora;
+    // Atualiza display periodicamente
+    unsigned long agora = millis();
+    if (agora - ultimoDisplay >= intervaloDisplay) {
+        ultimoDisplay = agora;
 
-    String mensagem = "Loop OK " + ultimoPisca;
-    // No futuro, aqui vamos ler sensor e atualizar o menu
-    display.update("Sistema", mensagem);
-  }
+        // Mostra no display o título do menu atual e o item selecionado
+        String titulo = menu.getTituloAtual();
+        int idx = menu.getIndiceSelecionado();
+        int tam = menu.getTamanhoSubmenu();
 
-  // NENHUM delay() AQUI!
+        if (tam > 0) {
+            // Mostra o título do item selecionado no momento (precisa de um método extra, faremos de forma simples)
+            display.update(titulo, "Item " + String(idx+1) + "/" + String(tam));
+        } else {
+            display.update(titulo, "Sem opcoes");
+        }
+    }
 }

@@ -6,12 +6,12 @@ Rele::Rele(uint8_t pino) : pino(pino), estado(false) {
 }
 
 void Rele::ligar() {
-  digitalWrite(pino, HIGH);
+  digitalWrite(pino, LOW);
   estado = true;
 }
 
 void Rele::desligar() {
-  digitalWrite(pino, LOW);
+  digitalWrite(pino, HIGH);
   estado = false;
 }
 
