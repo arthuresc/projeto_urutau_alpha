@@ -4,57 +4,83 @@
 #include "Display.h"
 #include "Rele.h"
 #include "MenuManager.h"
+#include "Render.h"
 
 // ----- Hardware -----
-#define PIN_LED        2
-#define PIN_BOTAO_UP   13
-#define PIN_BOTAO_DOWN 14
+#define PIN_LED         2
+#define PIN_BOTAO_UP    13
+#define PIN_BOTAO_DOWN  14
 #define PIN_BOTAO_ENTER 15
 
 // ----- Componentes -----
-Button btDown(PIN_BOTAO_DOWN);
-Button btUp(PIN_BOTAO_UP);
-Button btEnter(PIN_BOTAO_ENTER);
 Led ledInterno(PIN_LED);
+Button btUp(PIN_BOTAO_UP);
+Button btDown(PIN_BOTAO_DOWN);
+Button btEnter(PIN_BOTAO_ENTER);
 Display display;
+Render render(display);
 Rele luz(4);   // Substitua pelo pino do relé da luz
 MenuManager menu;
 
 // ----- Callbacks das ações -----
 void acaoLigarLuz() {
     luz.ligar();
-    Serial.println("Ação: Ligar Luz");
-    display.update("Menu", "Luz LIGADA");
+    Serial.println("Luz ligada");
 }
 
 void acaoDesligarLuz() {
     luz.desligar();
-    Serial.println("Ação: Desligar Luz");
-    display.update("Menu", "Luz DESLIGADA");
+    Serial.println("Luz desligada");
 }
 
-void acaoPiscarLed() {
-    // Pisca rápido o LED interno apenas uma vez
+void acaoRegarAgora() {
+    // Simula abertura da válvula de rega com o LED interno
+    Serial.println("Rega acionada por 2 segundos (simulacao)");
     ledInterno.on();
-    delay(200);
+    delay(2000);
     ledInterno.off();
-    Serial.println("Ação: Piscar LED");
-    display.update("Menu", "Piscou LED");
+    Serial.println("Rega finalizada");
 }
 
-// ----- Menu (estrutura) -----
-MenuItem menuLuz[] = {
+void acaoPerfilVegetacao() {
+    Serial.println("Perfil Vegetacao aplicado (placeholder)");
+}
+
+void acaoPerfilFloracao() {
+    Serial.println("Perfil Floracao aplicado (placeholder)");
+}
+
+void acaoPerfilGerminacao() {
+    Serial.println("Perfil Germinacao aplicado (placeholder)");
+}
+
+// ----- Estrutura do Menu (árvore) -----
+// Submenu ILUMINACAO
+MenuItem submenuIluminacao[] = {
     {"LIGAR LUZ", acaoLigarLuz, {}},
-    {"DESLIGAR LUZ", acaoDesligarLuz, {}}
+    {"DESLIGAR LUZ", acaoDesligarLuz, {}},
+    {"VOLTAR", [](){ menu.voltar(); }, {}}     // <-- novo item
 };
 
-MenuItem menuTeste[] = {
-    {"PISCAR LED", acaoPiscarLed, {}}
+// Submenu REGA
+MenuItem submenuRega[] = {
+    {"REGAR AGORA", acaoRegarAgora, {}},
+    {"VOLTAR", [](){ menu.voltar(); }, {}}
 };
 
-MenuItem menuRaiz[] = {
-    {"LUZ", nullptr, {menuLuz[0], menuLuz[1]}},
-    {"TESTE", nullptr, {menuTeste[0]}}
+// Submenu PERFIS
+MenuItem submenuPerfis[] = {
+    {"VEGETACAO", acaoPerfilVegetacao, {}},
+    {"FLORACAO", acaoPerfilFloracao, {}},
+    {"GERMINACAO", acaoPerfilGerminacao, {}},
+    {"VOLTAR", [](){ menu.voltar(); }, {}}
+};
+
+MenuItem menuPrincipal[] = {
+    {"HOME", nullptr, {}},
+    {"ILUMINACAO", nullptr, {submenuIluminacao[0], submenuIluminacao[1], submenuIluminacao[2]}},
+    {"REGA", nullptr, {submenuRega[0], submenuRega[1]}},
+    {"PERFIS", nullptr, {submenuPerfis[0], submenuPerfis[1], submenuPerfis[2], submenuPerfis[3]}}
 };
 
 // ----- Variáveis de tempo -----
@@ -63,22 +89,23 @@ const unsigned long intervaloDisplay = 500;
 
 void setup() {
     Serial.begin(9600);
-    Serial.println("Sistema com Menu - Teste");
-
+    Serial.println("Sistema Grow Indoor - Menu Completo");
+    
     display.init();
-
-    // Cria o menu raiz (contêiner)
-    static MenuItem raizContainer = {"HOME", nullptr, {menuRaiz[0], menuRaiz[1]}};
+    
+    // Cria o container raiz
+    static MenuItem raizContainer = {"MENU PRINCIPAL", nullptr, {
+        menuPrincipal[0], menuPrincipal[1], menuPrincipal[2], menuPrincipal[3]
+    }};
     menu.setRaiz(raizContainer);
-
-    // Exibe estado inicial
+    
+    // Exibe o menu no Serial para debug
     menu.atualizarDisplay();
 }
 
 void loop() {
-    // Leitura não bloqueante dos botões
+    // Leitura dos botões
     if (btUp.wasPressed()) {
-        Serial.println("APERTOU BOTAO AZUL");
         menu.navegar(-1);
         menu.atualizarDisplay();
     }
@@ -90,22 +117,40 @@ void loop() {
         menu.selecionar();
         menu.atualizarDisplay();
     }
-
-    // Atualiza display periodicamente
+    
+    // Atualiza o display OLED periodicamente
     unsigned long agora = millis();
     if (agora - ultimoDisplay >= intervaloDisplay) {
         ultimoDisplay = agora;
-
-        // Mostra no display o título do menu atual e o item selecionado
-        String titulo = menu.getTituloAtual();
+        
+        DadosTela tela;
+        String tituloAtual = menu.getTituloAtual();
         int idx = menu.getIndiceSelecionado();
         int tam = menu.getTamanhoSubmenu();
-
+        
+        // Lógica para exibir o item selecionado
         if (tam > 0) {
-            // Mostra o título do item selecionado no momento (precisa de um método extra, faremos de forma simples)
-            display.update(titulo, "Item " + String(idx+1) + "/" + String(tam));
+            // Acessamos o título do item selecionado via Serial (gambiarra temporária)
+            // O ideal seria um método getTituloItem(idx), mas faremos uma exibição simples
+            tela.titulo = tituloAtual;
+            String nomeItem = menu.getTituloItemAtual();
+            tela.linhas.push_back({"Selecione", nomeItem});
         } else {
-            display.update(titulo, "Sem opcoes");
+            // Se não há submenu (folha ou vazio), mostra título e mensagem fixa
+            tela.titulo = tituloAtual;
+            tela.linhas.push_back({"", ""});  // limpa linha
         }
+        
+        // Tratamento especial para HOME
+        if (tituloAtual == "HOME") {
+            tela.titulo = "HOME";
+            tela.linhas.clear();
+            tela.linhas.push_back({"Grow Indoor", "Pronto"});
+            tela.linhas.push_back({"Temp", "-- C"});
+            tela.linhas.push_back({"Umid", "-- %"});
+        }
+        
+        render.carregar(tela);
+        render.desenhar();
     }
 }

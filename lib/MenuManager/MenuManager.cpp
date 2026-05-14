@@ -15,9 +15,13 @@ void MenuManager::navegar(int direcao) {
 
     int tamanho = menuAtual->submenu.size();
     if (direcao > 0){
-      indiceSelecionado = (indiceSelecionado + direcao + tamanho) % tamanho;
+        indiceSelecionado = (indiceSelecionado + direcao + tamanho) % tamanho;
+        Serial.println("Botão Down ");
+        Serial.println(indiceSelecionado);
     }else if (direcao < 0) {
-      indiceSelecionado = (indiceSelecionado - direcao + tamanho) % tamanho;
+        indiceSelecionado = (indiceSelecionado + direcao + tamanho) % tamanho;
+        Serial.println("Botão UP ");
+        Serial.println(indiceSelecionado);
     }
 }
 
@@ -69,9 +73,11 @@ String MenuManager::getTituloAtual() const {
     return (menuAtual != nullptr) ? menuAtual->titulo : "";
 }
 
-// String MenuManager::getSubMenuTituloAtual() const {
-//     return (menuAtual->submenu[] != nullptr) ? menuAtual->titulo : "";
-// }
+String MenuManager::getTituloItemAtual() const {
+    if (menuAtual == nullptr || menuAtual->submenu.empty()) return "";
+    if (indiceSelecionado >= menuAtual->submenu.size()) return "";
+    return menuAtual->submenu[indiceSelecionado].titulo;
+}
 
 int MenuManager::getTamanhoSubmenu() const {
     return (menuAtual != nullptr) ? menuAtual->submenu.size() : 0;

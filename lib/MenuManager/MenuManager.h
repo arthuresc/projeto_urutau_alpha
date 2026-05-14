@@ -28,7 +28,7 @@ class MenuManager {
       void voltar();
       void atualizarDisplay();
       String getTituloAtual() const;
-      String getSubMenuTituloAtual() const;
+      String getTituloItemAtual() const;   // retorna o título do item selecionado
       int getTamanhoSubmenu() const;
       int getIndiceSelecionado() const;
 };
