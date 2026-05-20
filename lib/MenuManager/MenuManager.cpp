@@ -16,12 +16,8 @@ void MenuManager::navegar(int direcao) {
     int tamanho = menuAtual->submenu.size();
     if (direcao > 0){
         indiceSelecionado = (indiceSelecionado + direcao + tamanho) % tamanho;
-        Serial.println("Botão Down ");
-        Serial.println(indiceSelecionado);
     }else if (direcao < 0) {
         indiceSelecionado = (indiceSelecionado + direcao + tamanho) % tamanho;
-        Serial.println("Botão UP ");
-        Serial.println(indiceSelecionado);
     }
 }
 
