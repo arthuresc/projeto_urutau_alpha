@@ -14,11 +14,11 @@ void MenuManager::navegar(int direcao) {
     if (menuAtual == nullptr || menuAtual->submenu.empty()) return;
 
     int tamanho = menuAtual->submenu.size();
-    if (direcao > 0){
-        indiceSelecionado = (indiceSelecionado + direcao + tamanho) % tamanho;
-    }else if (direcao < 0) {
-        indiceSelecionado = (indiceSelecionado + direcao + tamanho) % tamanho;
-    }
+    indiceSelecionado = (indiceSelecionado + direcao + tamanho) % tamanho;
+    // if (direcao > 0){
+    //     indiceSelecionado = (indiceSelecionado + direcao + tamanho) % tamanho;
+    // }else if (direcao < 0) {
+    // }
 }
 
 void MenuManager::selecionar() {

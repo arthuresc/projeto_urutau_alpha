@@ -1,11 +1,5 @@
 #include <Display.h>
 
-
-#include <Arduino.h>
-#include <Adafruit_SSD1306.h>
-#include <Adafruit_GFX.h>
-#include <Wire.h>
-
 Display::Display()
   : display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
     _title("Titulo"),

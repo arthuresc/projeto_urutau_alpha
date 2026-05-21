@@ -2,16 +2,16 @@
 
 Rele::Rele(uint8_t pino) : pino(pino), estado(false) {
   pinMode(pino, OUTPUT); // veio do <Arduino.h> do nosso .h
-  digitalWrite(pino, LOW); //inicia desligado
+  digitalWrite(pino, HIGH); //inicia desligado
 }
 
 void Rele::ligar() {
-  digitalWrite(pino, HIGH);
+  digitalWrite(pino, LOW);
   estado = true;
 }
 
 void Rele::desligar() {
-  digitalWrite(pino, LOW);
+  digitalWrite(pino, HIGH);
   estado = false;
 }
 
