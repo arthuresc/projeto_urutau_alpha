@@ -17,11 +17,23 @@ bool Configuracao::carregarDoSD(const String& caminho) {
     }
 
     dados.clear();
+    secoes.clear();
+    String secaoAtual = "";  // secao vazia = global
+
     while (arquivo.available()) {
         String linha = arquivo.readStringUntil('\n');
         linha.trim();
-        // Ignora linhas em branco ou comentários (#)
         if (linha.length() == 0 || linha[0] == '#') continue;
+
+        // Detecta início de seção
+        if (linha.startsWith("[") && linha.endsWith("]")) {
+            secaoAtual = linha.substring(1, linha.length() - 1);
+            secaoAtual.trim();
+            if (secoes.find(secaoAtual) == secoes.end()) {
+                secoes[secaoAtual] = std::map<String, String>();
+            }
+            continue;
+        }
 
         int separador = linha.indexOf('=');
         if (separador > 0) {
@@ -29,24 +41,33 @@ bool Configuracao::carregarDoSD(const String& caminho) {
             String valor = linha.substring(separador + 1);
             chave.trim();
             valor.trim();
-            dados[chave] = valor;
+
+            if (secaoAtual.length() == 0) {
+                dados[chave] = valor;          // global
+            } else {
+                secoes[secaoAtual][chave] = valor;  // dentro da seção
+            }
         }
     }
     arquivo.close();
     carregado = true;
-    Serial.println("[Config] Arquivo carregado com " + String(dados.size()) + " parametros.");
+    Serial.println("[Config] Arquivo carregado com " + String(dados.size()) + " parametros globais e " + String(secoes.size()) + " secoes.");
     return true;
 }
 
-String Configuracao::get(const String& chave, const String& padrao) const {
-    if (dados.find(chave) != dados.end()) {
-        return dados.at(chave);
+String Configuracao::getSecao(const String& secao, const String& chave, const String& padrao) const {
+    auto itSecao = secoes.find(secao);
+    if (itSecao != secoes.end()) {
+        auto itChave = itSecao->second.find(chave);
+        if (itChave != itSecao->second.end()) {
+            return itChave->second;
+        }
     }
     return padrao;
 }
 
-int Configuracao::getInt(const String& chave, int padrao) const {
-    String val = get(chave, "");
+int Configuracao::getIntSecao(const String& secao, const String& chave, int padrao) const {
+    String val = getSecao(secao, chave, "");
     if (val.length() == 0) return padrao;
     return val.toInt();
 }

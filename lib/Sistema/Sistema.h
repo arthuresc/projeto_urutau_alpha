@@ -29,6 +29,7 @@ struct Animacao {
     int altura;
 };
 
+
 // --------------------------------------------
 // Classe principal
 // --------------------------------------------
@@ -56,6 +57,7 @@ private:
     FaseCultivo faseAtual;
     bool luzLigada;
     bool regaEmAndamento;
+    bool modoManual;   // true = controle manual, false = controle pelo perfil
 
     // --- Ciclo de luz (horários fixos do perfil) ---
     uint8_t horaOn, minutoOn;
@@ -89,6 +91,7 @@ public:
     void atualizar();
 
     // Callbacks do menu
+    void acaoModoManual();
     void acaoLigarLuz();
     void acaoDesligarLuz();
     void acaoRegarAgora();

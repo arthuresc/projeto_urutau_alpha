@@ -1,18 +1,28 @@
 #include "Rele.h"
 
-Rele::Rele(uint8_t pino) : pino(pino), estado(false) {
-  pinMode(pino, OUTPUT); // veio do <Arduino.h> do nosso .h
-  digitalWrite(pino, HIGH); //inicia desligado
+Rele::Rele(uint8_t pino, bool invertido) : pino(pino), invertido(invertido), estado(false) {
+    pinMode(pino, OUTPUT);
+    aplicarEstado(); // inicia desligado (estado = false)
+}
+
+void Rele::aplicarEstado() {
+    if (invertido) {
+        // Modo invertido: HIGH = ligado, LOW = desligado
+        digitalWrite(pino, estado ? HIGH : LOW);
+    } else {
+        // Modo padrão: LOW = ligado, HIGH = desligado
+        digitalWrite(pino, estado ? LOW : HIGH);
+    }
 }
 
 void Rele::ligar() {
-  digitalWrite(pino, LOW);
   estado = true;
+  aplicarEstado();
 }
 
 void Rele::desligar() {
-  digitalWrite(pino, HIGH);
   estado = false;
+  aplicarEstado();
 }
 
 void Rele::inverter() {
@@ -20,6 +30,6 @@ void Rele::inverter() {
   else ligar();
 }
 
-bool Rele::estaLigado() {
+bool Rele::estaLigado() const {
   return estado;
 }
