@@ -18,14 +18,14 @@ bool Configuracao::carregarDoSD(const String& caminho) {
 
     dados.clear();
     secoes.clear();
-    String secaoAtual = "";  // secao vazia = global
+    String secaoAtual = "";  // global
 
     while (arquivo.available()) {
         String linha = arquivo.readStringUntil('\n');
         linha.trim();
         if (linha.length() == 0 || linha[0] == '#') continue;
 
-        // Detecta início de seção
+        // Detecta seção: [NOME]
         if (linha.startsWith("[") && linha.endsWith("]")) {
             secaoAtual = linha.substring(1, linha.length() - 1);
             secaoAtual.trim();
@@ -43,7 +43,7 @@ bool Configuracao::carregarDoSD(const String& caminho) {
             valor.trim();
 
             if (secaoAtual.length() == 0) {
-                dados[chave] = valor;          // global
+                dados[chave] = valor;          // parâmetro global
             } else {
                 secoes[secaoAtual][chave] = valor;  // dentro da seção
             }
@@ -51,10 +51,25 @@ bool Configuracao::carregarDoSD(const String& caminho) {
     }
     arquivo.close();
     carregado = true;
-    Serial.println("[Config] Arquivo carregado com " + String(dados.size()) + " parametros globais e " + String(secoes.size()) + " secoes.");
+    Serial.println("[Config] Arquivo carregado com " + String(dados.size()) + " param. globais e " + String(secoes.size()) + " secoes.");
     return true;
 }
 
+// ========== Métodos Globais (originais) ==========
+String Configuracao::get(const String& chave, const String& padrao) const {
+    if (dados.find(chave) != dados.end()) {
+        return dados.at(chave);
+    }
+    return padrao;
+}
+
+int Configuracao::getInt(const String& chave, int padrao) const {
+    String val = get(chave, "");
+    if (val.length() == 0) return padrao;
+    return val.toInt();
+}
+
+// ========== Novos métodos de seção ==========
 String Configuracao::getSecao(const String& secao, const String& chave, const String& padrao) const {
     auto itSecao = secoes.find(secao);
     if (itSecao != secoes.end()) {
@@ -70,6 +85,12 @@ int Configuracao::getIntSecao(const String& secao, const String& chave, int padr
     String val = getSecao(secao, chave, "");
     if (val.length() == 0) return padrao;
     return val.toInt();
+}
+
+std::vector<String> Configuracao::listarSecoes() const {
+    std::vector<String> lista;
+    for (auto& par : secoes) lista.push_back(par.first);
+    return lista;
 }
 
 bool Configuracao::estaCarregado() const { return carregado; }

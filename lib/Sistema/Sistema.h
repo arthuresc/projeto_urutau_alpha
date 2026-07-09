@@ -9,6 +9,7 @@
 #include "Render.h"
 #include "DataLogger.h"
 #include "Configuracao.h"
+#include <Wire.h>
 
 // --------------------------------------------
 // Perfis de cultivo
