@@ -320,7 +320,7 @@ void Sistema::aplicarPerfil(FaseCultivo fase) {
         temp.horaOff     = config.getIntSecao(nomeSecao, "HORA_OFF", 24);
         temp.minutoOff   = config.getIntSecao(nomeSecao, "MINUTO_OFF", 0);
         temp.duracaoRegaMs = (unsigned long)config.getIntSecao(nomeSecao, "DURACAO_REGA_MS", 5000);
-
+        
         String horariosStr = config.getSecao(nomeSecao, "HORARIOS_REGA", "");
         if (horariosStr.length() == 0) {
             switch (fase) {
