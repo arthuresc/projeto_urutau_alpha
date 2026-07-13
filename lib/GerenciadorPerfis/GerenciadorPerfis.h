@@ -14,16 +14,12 @@ class GerenciadorPerfis {
 private:
     std::vector<DadosPerfil> perfis;
     Configuracao* config;
-    bool sdDisponivel;
-
-    // Carrega os perfis padrão (hardcoded) usados quando não há SD
-    void carregarPadroes();
 
 public:
     GerenciadorPerfis(Configuracao& cfg);
-    void carregar();   // tenta carregar do SD; se falhar, carrega padrões
+    bool carregar();   // retorna false se não houver perfis (SD ausente ou vazio)
     size_t quantidade() const;
     DadosPerfil* obter(size_t indice);
     DadosPerfil* obterPorNome(const String& nome);
-    String nomeAtivo;  // último perfil aplicado
+    String nomeAtivo;  // nome do perfil atualmente selecionado
 };

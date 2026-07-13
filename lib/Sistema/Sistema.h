@@ -1,8 +1,8 @@
 #pragma once
 #include <Arduino.h>
+#include <Wire.h>
 #include <vector>
 #include "Rele.h"
-#include "Led.h"
 #include "Button.h"
 #include "Display.h"
 #include "MenuManager.h"
@@ -10,100 +10,59 @@
 #include "DataLogger.h"
 #include "Configuracao.h"
 #include "GerenciadorPerfis.h"
-#include <Wire.h>
+#include "SensorSHT40.h"
+#include "SensorLuz.h"
 
-// --------------------------------------------
-// Perfis de cultivo
-// --------------------------------------------
-enum FaseCultivo {
-    GERMINACAO,
-    VEGETATIVO,
-    FLORACAO
-};
-
-// --------------------------------------------
-// Estrutura para animações (placeholder)
-// --------------------------------------------
-struct Animacao {
-    const uint8_t** frames;   // ponteiro para array de bitmaps
-    int num_frames;
-    int largura;
-    int altura;
-};
-
-
-// --------------------------------------------
-// Classe principal
-// --------------------------------------------
 class Sistema {
 private:
-    // --- Hardware básico ---
-    Led ledInterno;
+    // Hardware
     Button btUp, btDown, btEnter;
     Display display;
     Render render;
 
-    // --- Atuadores ---
-    Rele luz;
-    Rele bombaRega;
+    // Atuadores
+    Rele luz;            // relé das lâmpadas (juntas)
+    Rele coolerEntrada;
+    Rele coolerInterno;
+    Rele valvulaRega;
+    // cooler exaustor é controlado por PWM separadamente
 
-    // --- Interface ---
+    // Sensores
+    SensorSHT40 sensorInterno;   // I2C0
+    SensorSHT40 sensorExterno;   // I2C1
+    SensorLuz sensorLuz;
+    // Sensores de solo (4 canais ADC)
+    uint8_t pinosSolo[4] = {36, 39, 34, 35}; // GPIOs ADC1 (atenção: 34,35 apenas entrada, sem pull-up)
+
+    // Módulos
     MenuManager menu;
-    unsigned long ultimoDisplay;
-
-    // --- DataLogger e Configuração ---
     DataLogger logger;
     Configuracao config;
+    GerenciadorPerfis gerenciador;
 
-    // --- Estado do sistema ---
-    FaseCultivo faseAtual;
+    // Estado
+    String perfilAtivo;
     bool luzLigada;
     bool regaEmAndamento;
-    bool modoManual;   // true = controle manual, false = controle pelo perfil
-
-    // --- Ciclo de luz (horários fixos do perfil) ---
-    uint8_t horaOn, minutoOn;
-    uint8_t horaOff, minutoOff;
-
-    // --- Ciclo de rega flexível ---
-    std::vector<int> minutosRega;   // minutos do dia (0..1439)
-    int ultimoMinutoRega;           // evita repetir no mesmo minuto
-    unsigned long tempoInicioRega;  // millis() quando iniciou a rega
+    unsigned long tempoInicioRega;
     unsigned long duracaoRegaMs;
+    int horaOn, minutoOn, horaOff, minutoOff;
+    std::vector<int> minutosRega;
+    int ultimoMinutoRega;
 
-    // --- Animações (placeholder) ---
-    Animacao* animAtual;
-    unsigned long tempoInicioAnim;
-    int frameAtualAnim;
-    bool animacaoEmExecucao;
-
-    GerenciadorPerfis gerenciador;
     bool modoHUD;
-    void atualizarHUD();
-    void construirMenu();
+    unsigned long ultimoDisplay;
 
-    // --- Métodos internos ---
-    void aplicarPerfil(FaseCultivo fase);
-    void aplicarPerfil(const DadosPerfil& perfil);
+    // Métodos internos
+    void construirMenu();
+    void aplicarPerfil(const String& nome);
     void atualizarCicloLuz();
     void atualizarCicloRega();
+    void atualizarHUD();
     void atualizarDisplaySistema();
-    void iniciarAnimacao(Animacao& anim);
-    void atualizarAnimacao();
-    void salvarEstado();
-    void restaurarEstado();
 
 public:
     Sistema();
     void iniciar();
     void atualizar();
-
-    // Callbacks do menu
-    void acaoModoManual();
-    void acaoLigarLuz();
-    void acaoDesligarLuz();
-    void acaoRegarAgora();
-    void acaoPerfilVegetacao();
-    void acaoPerfilFloracao();
-    void acaoPerfilGerminacao();
 };
