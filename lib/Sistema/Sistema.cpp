@@ -13,7 +13,7 @@ faseAtual(VEGETATIVO), luzLigada(false), regaEmAndamento(false),
 horaOn(6), minutoOn(0), horaOff(24), minutoOff(0),
 ultimoMinutoRega(-1), tempoInicioRega(0), duracaoRegaMs(5000),
 animAtual(nullptr), tempoInicioAnim(0), frameAtualAnim(0), animacaoEmExecucao(false),
-modoManual(true)
+modoManual(true), gerenciador(config)
 { }
 
 // ============================================================
@@ -30,8 +30,12 @@ void Sistema::iniciar() {
     display.init();
     display.clear();              // limpa qualquer lixo
     delay(100);                   // pequena pausa
-    logger.iniciar();      // Inicializa RTC e cartão SD
+    logger.iniciar();
+    config.carregarDoSD("/config.txt");      // Inicializa RTC e cartão SD
+    gerenciador.carregar();                  // Carrega perfis do SD ou padrões
     
+    Serial.println(config.estaCarregado());
+
     // Carrega configurações do SD (se existir)
     if (config.carregarDoSD("/config.txt")) {
         horaOn      = config.getInt("HORA_ON", 6);
@@ -115,7 +119,7 @@ void Sistema::atualizar() {
     // --- Ciclos automáticos ---
     atualizarCicloLuz();
     atualizarCicloRega();
-    atualizarAnimacao();
+    // atualizarAnimacao();
     
     // --- Display (periódico) ---
     unsigned long agora = millis();
@@ -129,7 +133,7 @@ void Sistema::atualizar() {
 // Ciclo de luz (com RTC)
 // ============================================================
 void Sistema::atualizarCicloLuz() {
-    if (modoManual) return;
+    // if (modoManual) return;
     if (!logger.estaAtivo()) return;
     
     DateTime agora = logger.getRTC().now();
@@ -294,41 +298,73 @@ void Sistema::acaoPerfilGerminacao() { aplicarPerfil(GERMINACAO); }
 // ============================================================
 void Sistema::aplicarPerfil(FaseCultivo fase) {
     String nomeSecao;
+    // switch-case limitando o código a somente essas opções. Colocar um declarador de valoor para nomeSecao
     switch (fase) {
         case GERMINACAO: nomeSecao = "GERMINACAO"; break;
         case VEGETATIVO: nomeSecao = "VEGETATIVO"; break;
         case FLORACAO:  nomeSecao = "FLORACAO";  break;
     }
 
-    // Carrega da seção, com fallback para os valores padrão que já estavam no código
-    horaOn      = config.getIntSecao(nomeSecao, "HORA_ON", 6);
-    minutoOn    = config.getIntSecao(nomeSecao, "MINUTO_ON", 0);
-    horaOff     = config.getIntSecao(nomeSecao, "HORA_OFF", 24);
-    minutoOff   = config.getIntSecao(nomeSecao, "MINUTO_OFF", 0);
-    duracaoRegaMs = (unsigned long)config.getIntSecao(nomeSecao, "DURACAO_REGA_MS", 5000);
+    // Serial.println(fase, 'aplicarPerfil -> nomeSecao');
 
-    // Horários de rega
-    String horariosStr = config.getSecao(nomeSecao, "HORARIOS_REGA", "");
-    if (horariosStr.length() == 0) {
-        // Valores padrão se a chave não estiver no arquivo
-        switch (fase) {
-            case GERMINACAO: horariosStr = "07:00,09:00,11:00,13:00,15:00,17:00"; break;
-            case VEGETATIVO: horariosStr = "08:00,12:00,16:00,20:00"; break;
-            case FLORACAO:   horariosStr = "08:00,14:00,20:00"; break;
+    DadosPerfil* p = gerenciador.obterPorNome(nomeSecao);
+    if (p) {
+        aplicarPerfil(*p);
+    } else {
+        // Se por algum motivo o gerenciador não tiver esse perfil (ex: SD não carregado)
+        // Criamos um DadosPerfil temporário com os fallbacks correspondentes
+        DadosPerfil temp;
+        temp.nome = nomeSecao;
+        temp.horaOn      = config.getIntSecao(nomeSecao, "HORA_ON", 6);
+        temp.minutoOn    = config.getIntSecao(nomeSecao, "MINUTO_ON", 0);
+        temp.horaOff     = config.getIntSecao(nomeSecao, "HORA_OFF", 24);
+        temp.minutoOff   = config.getIntSecao(nomeSecao, "MINUTO_OFF", 0);
+        temp.duracaoRegaMs = (unsigned long)config.getIntSecao(nomeSecao, "DURACAO_REGA_MS", 5000);
+
+        String horariosStr = config.getSecao(nomeSecao, "HORARIOS_REGA", "");
+        if (horariosStr.length() == 0) {
+            switch (fase) {
+                case GERMINACAO: horariosStr = "07:00,09:00,11:00,13:00,15:00,17:00"; break;
+                case VEGETATIVO: horariosStr = "08:00,12:00,16:00,20:00"; break;
+                case FLORACAO:   horariosStr = "08:00,14:00,20:00"; break;
+            }
         }
+
+        // Parsing
+        int pos = 0;
+        while (pos < horariosStr.length()) {
+            int sep = horariosStr.indexOf(',', pos);
+            if (sep == -1) sep = horariosStr.length();
+            String horario = horariosStr.substring(pos, sep);
+            horario.trim();
+            int doisPontos = horario.indexOf(':');
+            if (doisPontos > 0) {
+                int h = horario.substring(0, doisPontos).toInt();
+                int m = horario.substring(doisPontos+1).toInt();
+                temp.minutosRega.push_back(h * 60 + m);
+            }
+            pos = sep + 1;
+        }
+        aplicarPerfil(temp);
     }
+}
 
-    // Processa a string de horários (igual ao que você já faz no iniciar)
-    minutosRega.clear();
-    int pos = 0;
-    // while (pos < horariosStr.length()) {
-    //     // ... parsing ...
-    // }
+void Sistema::aplicarPerfil(const DadosPerfil& perfil) {
+    horaOn      = perfil.horaOn;
+    minutoOn    = perfil.minutoOn;
+    horaOff     = perfil.horaOff;
+    minutoOff   = perfil.minutoOff;
+    duracaoRegaMs = perfil.duracaoRegaMs;
+    minutosRega = perfil.minutosRega;
 
-    // Atualiza o estado do perfil e salva
-    faseAtual = fase;
+    gerenciador.nomeAtivo = perfil.nome;
+
+    if (perfil.nome == "GERMINACAO") faseAtual = GERMINACAO;
+    else if (perfil.nome == "VEGETATIVO") faseAtual = VEGETATIVO;
+    else if (perfil.nome == "FLORACAO") faseAtual = FLORACAO;
+
     salvarEstado();
-    Serial.println("Perfil aplicado: " + nomeSecao);
+    Serial.println("Perfil aplicado: " + perfil.nome);
 }
 
 // ============================================================
@@ -356,7 +392,54 @@ void Sistema::restaurarEstado() {
         if (linha.startsWith("perfil=")) faseAtual = (FaseCultivo)linha.substring(7).toInt();
         else if (linha.startsWith("hora_on=")) horaOn = linha.substring(8).toInt();
         else if (linha.startsWith("hora_off=")) horaOff = linha.substring(9).toInt();
+        Serial.println(linha);
     }
     f.close();
+    // Serial.print(f);
     Serial.printf("Estado restaurado: perfil %d, luz %02d:00 as %02d:00\n", (int)faseAtual, horaOn, horaOff);
+}
+
+
+void Sistema::construirMenu() {
+    // Cria o vetor de itens dos perfis dinâmicos
+    std::vector<MenuItem> itensPerfis;
+    for (size_t i = 0; i < gerenciador.quantidade(); i++) {
+        DadosPerfil* p = gerenciador.obter(i);
+        String nome = p->nome;
+        itensPerfis.push_back({nome, [this, nome](){
+            DadosPerfil* perfil = gerenciador.obterPorNome(nome);
+            if (perfil) aplicarPerfil(*perfil);
+        }, {}});
+    }
+    // Adiciona o item VOLTAR
+    itensPerfis.push_back({"VOLTAR", [this](){ menu.voltar(); }, {}});
+
+    // Menu principal: HOME, HUD, PERFIS
+    std::vector<MenuItem> menuPrincipal;
+    menuPrincipal.push_back({"HOME", nullptr, {}});
+    menuPrincipal.push_back({"HUD", [this](){ modoHUD = true; }, {}});
+
+    // O submenu PERFIS será os itens criados acima
+    // Precisamos de um MenuItem que contenha o submenu com os itensPerfis.
+    // Criamos um item "PERFIS" cujo submenu é o vetor itensPerfis.
+    // Como o MenuManager espera um vetor estático, vamos armazená-lo no MenuManager.
+    // Usaremos o novo método setMenuDinamico.
+    MenuItem raiz = {"MENU", nullptr, {}}; // placeholder
+    // Na verdade, precisamos reestruturar: vamos fazer com que o MenuManager aceite um vetor de itens para o menu principal também.
+    // Solução mais simples: usar arrays estáticos para HOME e HUD, e anexar os itens dinâmicos no menu "PERFIS" dentro de um MenuItem estático, mas como a quantidade de perfis varia, precisamos de alocação dinâmica.
+    // Vamos modificar o MenuManager para permitir definir o menu raiz com um vetor de MenuItem.
+    // Para já, vamos colocar a raiz com três itens: HOME, HUD e PERFIS (com submenu vazio) e depois injetar os itens no submenu de PERFIS.
+    // Isso exige acesso ao submenu do item PERFIS. Faremos assim:
+    MenuItem itemPerfis = {"PERFIS", nullptr, {}};
+    itemPerfis.submenu = itensPerfis; // copia o vetor
+    std::vector<MenuItem> raizItens = {
+        {"HOME", nullptr, {}},
+        {"HUD", [this](){ modoHUD = true; }, {}},
+        itemPerfis
+    };
+    // Agora precisamos de um MenuItem raiz que contenha esses três itens.
+    MenuItem raizContainer = {"MENU PRINCIPAL", nullptr, raizItens};
+    // O problema é que o MenuManager.setRaiz espera um Item& e o vetor precisa sobreviver.
+    // Vamos armazenar o vetor raizItens no MenuManager.
+    menu.setMenuDinamico(raizContainer, raizItens);
 }

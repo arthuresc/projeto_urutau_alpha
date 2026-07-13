@@ -82,3 +82,13 @@ int MenuManager::getTamanhoSubmenu() const {
 int MenuManager::getIndiceSelecionado() const {
     return indiceSelecionado;
 }
+
+void MenuManager::setMenuDinamico(MenuItem& raiz, std::vector<MenuItem>& itens) {
+    // Move os itens do vetor para o membro interno (para manter a referência válida)
+    itensDinamicos = std::move(itens);
+    // A raiz deve apontar para os itens armazenados em itensDinamicos
+    // Isso exige que a raiz já tenha seu submenu configurado com os ponteiros corretos.
+    // Vamos fazer a raiz ser um item cujo submenu é o próprio itensDinamicos.
+    // Para simplificar, modificaremos a estrutura do menu em Sistema.
+    setRaiz(raiz);
+}

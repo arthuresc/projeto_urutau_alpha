@@ -9,6 +9,7 @@
 #include "Render.h"
 #include "DataLogger.h"
 #include "Configuracao.h"
+#include "GerenciadorPerfis.h"
 #include <Wire.h>
 
 // --------------------------------------------
@@ -76,8 +77,14 @@ private:
     int frameAtualAnim;
     bool animacaoEmExecucao;
 
+    GerenciadorPerfis gerenciador;
+    bool modoHUD;
+    void atualizarHUD();
+    void construirMenu();
+
     // --- Métodos internos ---
     void aplicarPerfil(FaseCultivo fase);
+    void aplicarPerfil(const DadosPerfil& perfil);
     void atualizarCicloLuz();
     void atualizarCicloRega();
     void atualizarDisplaySistema();

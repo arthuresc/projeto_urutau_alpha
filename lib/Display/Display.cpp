@@ -25,7 +25,6 @@ bool Display::initDisplay()
     Serial.println(F("SSD1306 allocation failed"));
     return false;
   }
-  Serial.println("Teste aqui no initDisplay");
   display.clearDisplay();
   // Eu: Acho que esse código está errado
   display.setTextColor(WHITE);
@@ -37,7 +36,6 @@ bool Display::initDisplay()
 
 // 5. Inicialização pública
   bool Display::init() {
-  Serial.println("Iniciou o inicio");
     if(initDisplay()) {
       update(_title, _message);
       Serial.println("Teste aqui no INIT não o outro");

@@ -15,6 +15,7 @@ class MenuManager {
     MenuItem* raiz;
     MenuItem* menuAtual;
     std::vector<MenuItem*> caminho; //pilha de navegação (histórico)
+    std::vector<MenuItem> itensDinamicos; // armazena os itens do menu perfis
 
     //Interface
     int indiceSelecionado;
@@ -31,4 +32,5 @@ class MenuManager {
       String getTituloItemAtual() const;   // retorna o título do item selecionado
       int getTamanhoSubmenu() const;
       int getIndiceSelecionado() const;
+      void setMenuDinamico(MenuItem& raiz, std::vector<MenuItem>& itens);
 };
