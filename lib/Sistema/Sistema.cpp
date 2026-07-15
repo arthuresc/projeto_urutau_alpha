@@ -4,8 +4,8 @@ Sistema::Sistema()
     : btUp(13), btDown(34), btEnter(15),
       display(), render(display),
       luz(12, false),          // relé lâmpadas (LOW ligado)
-      coolerEntrada(26, false),
-      coolerInterno(27, false),
+      coolerVentilacao(26, false),
+      coolerExaustao(27, false),
       valvulaRega(14, false),
       sensorInterno(&Wire),    // I2C0
       sensorExterno(&Wire1),   // I2C1
@@ -23,7 +23,7 @@ Sistema::Sistema()
 void Sistema::iniciar() {
     Serial.begin(9600);
     // 1. Inicializar barramentos I2C
-    Wire.begin(21, 22);      // I2C0 (display, sensores internos, RTC)
+    // Wire.begin(21, 22);      // I2C0 (display, sensores internos, RTC)
     Wire1.begin(33, 32);     // I2C1 (SHT40 externo)
 
     // 2. Display
@@ -138,22 +138,153 @@ void Sistema::atualizarCicloLuz() {
 // ...
 
 void Sistema::atualizar() {
+    // Atualiza as leituras dos sensores
+    sensorInterno.atualizar();
+    sensorExterno.atualizar();
+    sensorLuz.atualizar();
+
     if (modoHUD) {
-        atualizarHUD();
-        if (btEnter.wasPressed()) modoHUD = false;
+        if (btEnter.wasPressed()) {
+            modoHUD = false;
+            atualizarDisplaySistema();
+        } else {
+            unsigned long agora = millis();
+            if (agora - ultimoDisplay >= 500) {
+                ultimoDisplay = agora;
+                atualizarHUD();
+            }
+        }
         return;
     }
 
-    if (btUp.wasPressed()) { menu.navegar(-1); menu.atualizarDisplay(); }
-    if (btDown.wasPressed()) { menu.navegar(1); menu.atualizarDisplay(); }
-    if (btEnter.wasPressed()) { menu.selecionar(); menu.atualizarDisplay(); }
+    bool buttonPressed = false;
+    if (btUp.wasPressed()) {
+        menu.navegar(-1);
+        buttonPressed = true;
+    }
+    if (btDown.wasPressed()) {
+        menu.navegar(1);
+        buttonPressed = true;
+    }
+    if (btEnter.wasPressed()) {
+        menu.selecionar();
+        buttonPressed = true;
+    }
 
     atualizarCicloLuz();
     atualizarCicloRega();
 
     unsigned long agora = millis();
-    if (agora - ultimoDisplay >= 500) {
+    if (buttonPressed || (agora - ultimoDisplay >= 500)) {
         ultimoDisplay = agora;
         atualizarDisplaySistema();
     }
+}
+
+void Sistema::atualizarCicloRega() {
+    if (!logger.estaAtivo()) return;
+
+    DateTime agora = logger.getRTC().now();
+    int minutoAtual = agora.hour() * 60 + agora.minute();
+
+    // Rega em andamento: verifica se terminou
+    if (regaEmAndamento) {
+        if (millis() - tempoInicioRega >= duracaoRegaMs) {
+            valvulaRega.desligar();
+            regaEmAndamento = false;
+            logger.registrar("EVENTO,REGA,FIM");
+        }
+        return;
+    }
+
+    // Verifica se o minuto atual coincide com algum horário agendado
+    for (int minAgendado : minutosRega) {
+        if (minutoAtual == minAgendado && minutoAtual != ultimoMinutoRega) {
+            valvulaRega.ligar();
+            regaEmAndamento = true;
+            tempoInicioRega = millis();
+            ultimoMinutoRega = minutoAtual;
+            logger.registrar("EVENTO,REGA,INICIO," + String(agora.hour()) + ":" + String(agora.minute()));
+            break;
+        }
+    }
+
+    // Reseta o ultimoMinutoRega na virada do dia
+    if (agora.hour() == 0 && agora.minute() == 0) {
+        ultimoMinutoRega = -1;
+    }
+}
+
+void Sistema::atualizarHUD() {
+    DadosTela tela;
+    tela.titulo = "HUD - SENSORES";
+
+    // 1. Temperatura e Umidade Interna (SHT40)
+    String tempInt = "-- C";
+    String umidInt = "-- %";
+    if (sensorInterno.estaAtivo()) {
+        tempInt = String(sensorInterno.getTemperatura(), 1) + "C";
+        umidInt = String(sensorInterno.getUmidade(), 0) + "%";
+    }
+    tela.linhas.push_back({"Int", tempInt + " / " + umidInt});
+
+    // 2. Temperatura e Umidade Externa (SHT40)
+    String tempExt = "-- C";
+    String umidExt = "-- %";
+    if (sensorExterno.estaAtivo()) {
+        Serial.println("Sensor externo ativo");
+        Serial.println(sensorExterno.getTemperatura());
+        tempExt = String(sensorExterno.getTemperatura(), 1) + "C";
+        umidExt = String(sensorExterno.getUmidade(), 0) + "%";
+    }
+    tela.linhas.push_back({"Ext", tempExt + " / " + umidExt});
+
+    // 3. Luminosidade (Lux / PPFD)
+    String luzStr = "-- lx";
+    if (sensorLuz.estaAtivo()) {
+        luzStr = String(sensorLuz.getLux(), 0) + "lx (" + String(sensorLuz.getPPFD(), 0) + "u)";
+    }
+    tela.linhas.push_back({"Luz", luzStr});
+
+    // 4. Umidade do Solo (4 canais ADC)
+    int s1 = analogRead(pinosSolo[0]);
+    int s2 = analogRead(pinosSolo[1]);
+    int s3 = analogRead(pinosSolo[2]);
+    int s4 = analogRead(pinosSolo[3]);
+    tela.linhas.push_back({"Solo", String(s1) + " " + String(s2) + " " + String(s3) + " " + String(s4)});
+
+    render.carregar(tela);
+    render.desenhar();
+}
+
+void Sistema::atualizarDisplaySistema() {
+    DadosTela tela;
+    String tituloAtual = menu.getTituloAtual();
+    int tam = menu.getTamanhoSubmenu();
+
+    if (tituloAtual == "HOME") {
+        tela.titulo = perfilAtivo.isEmpty() ? "HOME" : perfilAtivo;
+
+        // Temperatura e Umidade Interna
+        String tempInt = "-- C";
+        String umidInt = "-- %";
+        if (sensorInterno.estaAtivo()) {
+            tempInt = String(sensorInterno.getTemperatura(), 1) + " C";
+            umidInt = String(sensorInterno.getUmidade(), 0) + "%";
+        }
+
+        tela.linhas.push_back({"Luz", luzLigada ? "LIGADA" : "DESLIGADA"});
+        tela.linhas.push_back({"Rega", regaEmAndamento ? "REGANDO" : "AGUARDANDO"});
+        tela.linhas.push_back({"Temp", tempInt});
+        tela.linhas.push_back({"Umid", umidInt});
+    } else if (tam > 0) {
+        tela.titulo = tituloAtual;
+        tela.linhas.push_back({"Selecione", menu.getTituloItemAtual()});
+    } else {
+        tela.titulo = tituloAtual;
+        tela.linhas.push_back({"", ""});
+    }
+
+    render.carregar(tela);
+    render.desenhar();
 }

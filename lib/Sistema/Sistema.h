@@ -22,8 +22,10 @@ private:
 
     // Atuadores
     Rele luz;            // relé das lâmpadas (juntas)
-    Rele coolerEntrada;
-    Rele coolerInterno;
+    Rele led;
+    Rele coolerVentilacao;
+    Rele coolerExaustao;
+    Rele coolerMovimentacao;
     Rele valvulaRega;
     // cooler exaustor é controlado por PWM separadamente
 
