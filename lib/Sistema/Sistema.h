@@ -64,6 +64,16 @@ unsigned long lastInitAttemptInterno;
 unsigned long lastInitAttemptExterno;
 unsigned long sensorInitRetryIntervalMs;
 
+// Backoff
+uint8_t retryAttemptsInterno;
+uint8_t retryAttemptsExterno;
+unsigned long baseRetryIntervalMs;
+unsigned long maxRetryIntervalMs;
+
+// Estado anterior dos sensores (para detecção de falhas)
+bool prevSensorInternoAtivo;
+bool prevSensorExternoAtivo;
+
 // Métodos internos
 void construirMenu();
 void aplicarPerfil(const String& nome);
@@ -72,6 +82,9 @@ void atualizarCicloRega();
 void atualizarHUD();
 void atualizarDisplaySistema();
 void i2cScan(TwoWire& bus, const String& name, bool showOnDisplay = true); // scan helper
+
+// NTP/WiFi
+void trySyncTimeWithNTP();
 
 public:
 Sistema();

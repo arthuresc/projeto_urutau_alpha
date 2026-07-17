@@ -1,4 +1,6 @@
 #include "Sistema.h"
+#include <WiFi.h>
+#include <time.h>
 
 Sistema::Sistema()
     : btUp(13), btDown(34), btEnter(15),
@@ -24,7 +26,13 @@ Sistema::Sistema()
       serialReportIntervalMs(5000),
       lastInitAttemptInterno(0),
       lastInitAttemptExterno(0),
-      sensorInitRetryIntervalMs(10000) // tenta re-init a cada 10s se inativo
+      sensorInitRetryIntervalMs(10000), // tenta re-init a cada 10s se inativo
+      retryAttemptsInterno(0),
+      retryAttemptsExterno(0),
+      baseRetryIntervalMs(10000),
+      maxRetryIntervalMs(600000),
+      prevSensorInternoAtivo(false),
+      prevSensorExternoAtivo(false)
 {
 }
 
@@ -36,8 +44,8 @@ void Sistema::iniciar() {
     Wire1.begin(33, 32);     // I2C1 (SDA=33, SCL=32 para SHT40 externo)
 
     // I2C scan para facilitar debug: lista endereços encontrados em ambos barramentos
-    i2cScan(Wire, "I2C0");
-    i2cScan(Wire1, "I2C1");
+    i2cScan(Wire, "I2C0", true);
+    i2cScan(Wire1, "I2C1", true);
 
     // 2. Display
     display.init();
@@ -45,6 +53,9 @@ void Sistema::iniciar() {
 
     // 3. Logger (RTC + SD)
     logger.iniciar();
+
+    // 3.1 Tentar sincronizar hora via NTP se credenciais WiFi estiverem em config.txt
+    trySyncTimeWithNTP();
 
     // 4. Carregar configuração do SD
     if (!config.carregarDoSD("/config.txt")) {
@@ -82,13 +93,17 @@ void Sistema::iniciar() {
     aplicarPerfil(perfilAtivo);
 
     // 9. Inicializar sensores (opcional, se falhar, não trava)
-    sensorInterno.iniciar();
-    sensorExterno.iniciar();
+    sensorInterno.iniciar(3, 200); // 3 tentativas com 200ms entre tentativas
+    sensorExterno.iniciar(3, 200);
     sensorLuz.iniciar();
 
     // Fazer self-test rápido dos sensores SHT40 para feedback imediato
     sensorInterno.selfTest();
     sensorExterno.selfTest();
+
+    // Inicializa flags de estado para detecção de transições
+    prevSensorInternoAtivo = sensorInterno.estaAtivo();
+    prevSensorExternoAtivo = sensorExterno.estaAtivo();
 
     // sensores de solo não precisam de init, apenas pinMode nos pinos (feito no construtor)
     for (int i=0; i<4; i++) pinMode(pinosSolo[i], INPUT);
@@ -168,26 +183,52 @@ void Sistema::atualizar() {
     sensorExterno.atualizar();
     sensorLuz.atualizar();
 
-    // Re-init automático: se sensor marcado inativo, tentar reinicializar periodicamente
+    // Re-init automático com backoff exponencial: se sensor marcado inativo, tentar reinicializar periodicamente
     unsigned long nowMs = millis();
-    if (!sensorInterno.estaAtivo() && (nowMs - lastInitAttemptInterno >= sensorInitRetryIntervalMs)) {
-        Serial.println("[Sistema] Tentando re-inicializar " + sensorInterno.getNome());
-        lastInitAttemptInterno = nowMs;
-        if (sensorInterno.iniciar()) {
-            Serial.println("[Sistema] Re-init OK: " + sensorInterno.getNome());
-            sensorInterno.selfTest();
-        } else {
-            Serial.println("[Sistema] Re-init falhou: " + sensorInterno.getNome());
+
+    // Interno
+    if (!sensorInterno.estaAtivo()) {
+        uint8_t capAttempts = retryAttemptsInterno > 6 ? 6 : retryAttemptsInterno; // evita shift overflow
+        unsigned long factor = (1UL << capAttempts);
+        unsigned long waitMs = baseRetryIntervalMs * factor;
+        if (waitMs > maxRetryIntervalMs) waitMs = maxRetryIntervalMs;
+        if (nowMs - lastInitAttemptInterno >= waitMs) {
+            Serial.println("[Sistema] Tentando re-inicializar " + sensorInterno.getNome() + " (attempt=" + String(retryAttemptsInterno) + ", wait=" + String(waitMs) + "ms)");
+            lastInitAttemptInterno = nowMs;
+            bool ok = sensorInterno.iniciar();
+            if (ok) {
+                Serial.println("[Sistema] Re-init OK: " + sensorInterno.getNome());
+                retryAttemptsInterno = 0;
+                sensorInterno.selfTest();
+                logger.registrar("EVENTO,SENSOR," + sensorInterno.getNome() + ",RECUPERADO");
+            } else {
+                retryAttemptsInterno++;
+                Serial.println("[Sistema] Re-init falhou: " + sensorInterno.getNome());
+                logger.registrar("EVENTO,SENSOR," + sensorInterno.getNome() + ",FALHA_REINIT");
+            }
         }
     }
-    if (!sensorExterno.estaAtivo() && (nowMs - lastInitAttemptExterno >= sensorInitRetryIntervalMs)) {
-        Serial.println("[Sistema] Tentando re-inicializar " + sensorExterno.getNome());
-        lastInitAttemptExterno = nowMs;
-        if (sensorExterno.iniciar()) {
-            Serial.println("[Sistema] Re-init OK: " + sensorExterno.getNome());
-            sensorExterno.selfTest();
-        } else {
-            Serial.println("[Sistema] Re-init falhou: " + sensorExterno.getNome());
+
+    // Externo
+    if (!sensorExterno.estaAtivo()) {
+        uint8_t capAttemptsE = retryAttemptsExterno > 6 ? 6 : retryAttemptsExterno;
+        unsigned long factorE = (1UL << capAttemptsE);
+        unsigned long waitMsE = baseRetryIntervalMs * factorE;
+        if (waitMsE > maxRetryIntervalMs) waitMsE = maxRetryIntervalMs;
+        if (nowMs - lastInitAttemptExterno >= waitMsE) {
+            Serial.println("[Sistema] Tentando re-inicializar " + sensorExterno.getNome() + " (attempt=" + String(retryAttemptsExterno) + ", wait=" + String(waitMsE) + "ms)");
+            lastInitAttemptExterno = nowMs;
+            bool ok = sensorExterno.iniciar();
+            if (ok) {
+                Serial.println("[Sistema] Re-init OK: " + sensorExterno.getNome());
+                retryAttemptsExterno = 0;
+                sensorExterno.selfTest();
+                logger.registrar("EVENTO,SENSOR," + sensorExterno.getNome() + ",RECUPERADO");
+            } else {
+                retryAttemptsExterno++;
+                Serial.println("[Sistema] Re-init falhou: " + sensorExterno.getNome());
+                logger.registrar("EVENTO,SENSOR," + sensorExterno.getNome() + ",FALHA_REINIT");
+            }
         }
     }
 
@@ -265,7 +306,29 @@ void Sistema::atualizar() {
         }
         Serial.println("");
     }
+
+    // Detectar transições de estado dos sensores e logar eventos
+    if (prevSensorInternoAtivo && !sensorInterno.estaAtivo()) {
+        Serial.println("[Sistema] Sensor interno ficou INATIVO: " + sensorInterno.getNome());
+        logger.registrar("EVENTO,SENSOR," + sensorInterno.getNome() + ",INATIVO");
+        prevSensorInternoAtivo = false;
+    } else if (!prevSensorInternoAtivo && sensorInterno.estaAtivo()) {
+        Serial.println("[Sistema] Sensor interno RECUPERADO: " + sensorInterno.getNome());
+        logger.registrar("EVENTO,SENSOR," + sensorInterno.getNome() + ",ATIVO");
+        prevSensorInternoAtivo = true;
+    }
+
+    if (prevSensorExternoAtivo && !sensorExterno.estaAtivo()) {
+        Serial.println("[Sistema] Sensor externo ficou INATIVO: " + sensorExterno.getNome());
+        logger.registrar("EVENTO,SENSOR," + sensorExterno.getNome() + ",INATIVO");
+        prevSensorExternoAtivo = false;
+    } else if (!prevSensorExternoAtivo && sensorExterno.estaAtivo()) {
+        Serial.println("[Sistema] Sensor externo RECUPERADO: " + sensorExterno.getNome());
+        logger.registrar("EVENTO,SENSOR," + sensorExterno.getNome() + ",ATIVO");
+        prevSensorExternoAtivo = true;
+    }
 }
+
 
 void Sistema::atualizarCicloRega() {
     if (!logger.estaAtivo()) return;
@@ -373,6 +436,61 @@ void Sistema::atualizarDisplaySistema() {
     render.carregar(tela);
     render.desenhar();
 }
+
+void Sistema::trySyncTimeWithNTP() {
+    // Lê credenciais do config (se disponíveis)
+    String ssid = config.get("WIFI_SSID", "");
+    String pass = config.get("WIFI_PASS", "");
+    if (ssid.isEmpty()) {
+        Serial.println("[NTP] WIFI_SSID não configurado, pulando sincronização NTP.");
+        return;
+    }
+
+    Serial.println("[NTP] Conectando à rede WiFi: " + ssid);
+    WiFi.begin(ssid.c_str(), pass.c_str());
+    unsigned long start = millis();
+    const unsigned long timeoutMs = 15000; // 15s
+    while (WiFi.status() != WL_CONNECTED && millis() - start < timeoutMs) {
+        delay(200);
+    }
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("[NTP] Falha ao conectar WiFi, pulando NTP.");
+        return;
+    }
+
+    String ntp = config.get("NTP_SERVER", "pool.ntp.org");
+    long gmtOffsetSec = config.getInt("GMT_OFFSET_SEC", 0);
+    int daylightOffsetSec = config.getInt("DAYLIGHT_OFFSET_SEC", 0);
+    Serial.println("[NTP] ConfigTime -> server=" + ntp + " GMToffset=" + String(gmtOffsetSec));
+    configTime(gmtOffsetSec, daylightOffsetSec, ntp.c_str());
+
+    // aguarda tempo válido
+    time_t now = time(nullptr);
+    unsigned long waitStart = millis();
+    while (now < 1600000000 && millis() - waitStart < 10000) { // 10s
+        delay(200);
+        now = time(nullptr);
+    }
+
+    if (now < 1600000000) {
+        Serial.println("[NTP] Não foi possível obter hora via NTP.");
+    } else {
+        Serial.println("[NTP] Hora obtida via NTP: " + String((unsigned long)now));
+        // Atualiza RTC se o logger/RTC estiver disponível
+        if (logger.estaAtivo()) {
+            logger.getRTC().adjust(DateTime((uint32_t)now));
+            Serial.println("[NTP] RTC atualizado com hora NTP.");
+            logger.registrar("EVENTO,NTP,SYNC");
+        } else {
+            Serial.println("[NTP] Logger/RTC inativo; hora NTP não aplicada ao RTC.");
+        }
+    }
+
+    // Desconectar WiFi para economizar energia (opcional)
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+}
+
 
 void Sistema::i2cScan(TwoWire& bus, const String& name, bool showOnDisplay) {
     Serial.println("[I2C_SCAN] Scanning bus: " + name);
