@@ -9,8 +9,8 @@ Sistema::Sistema()
       coolerExaustao(27, false),
       coolerMovimentacao(25, false),
       valvulaRega(14, false),
-      sensorInterno(&Wire),    // I2C0
-      sensorExterno(&Wire1),   // I2C1
+      sensorInterno(&Wire, 0x44, "SHT_INT"),    // I2C0 (internal SHT40)
+      sensorExterno(&Wire1, 0x44, "SHT_EXT"),   // I2C1 (external SHT40)
       sensorLuz(),
       menu(), ultimoDisplay(0),
       config(), gerenciador(config),
