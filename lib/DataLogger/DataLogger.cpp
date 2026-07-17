@@ -14,11 +14,9 @@ bool DataLogger::iniciar() {
         rtcAtivo = true;
         Serial.println("[DataLogger] RTC iniciado.");
         
-        // Se o RTC está parado (perdeu bateria), ajusta com hora de compilação
-        if (!rtc.isrunning()) {
-            Serial.println("[DataLogger] RTC parado. Ajustando com hora de compilação.");
-            rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-        }
+        // Sempre ajusta RTC na inicialização para garantir hora correta
+        // (RTClib DS3231 não tem método isrunning() confiável)
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     } else {
         Serial.println("[DataLogger] ERRO: RTC ausente.");
     }
@@ -48,7 +46,5 @@ void DataLogger::registrar(const String& dados) {
     else arq.print("SEM_RTC,");
     arq.println(dados);
     
-    if (!arq.close()) {
-        Serial.println("[DataLogger] AVISO: Erro ao fechar arquivo de log.");
-    }
+    arq.close();  // File::close() retorna void, não bool
 }
