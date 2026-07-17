@@ -55,16 +55,21 @@ private:
     bool modoHUD;
     unsigned long ultimoDisplay;
 
-    // Métodos internos
-    void construirMenu();
-    void aplicarPerfil(const String& nome);
-    void atualizarCicloLuz();
-    void atualizarCicloRega();
-    void atualizarHUD();
-    void atualizarDisplaySistema();
+// Serial reporting
+unsigned long ultimoSerialReport;
+unsigned long serialReportIntervalMs;
+
+// Métodos internos
+void construirMenu();
+void aplicarPerfil(const String& nome);
+void atualizarCicloLuz();
+void atualizarCicloRega();
+void atualizarHUD();
+void atualizarDisplaySistema();
+void i2cScan(TwoWire& bus, const String& name); // scan helper
 
 public:
-    Sistema();
-    void iniciar();
-    void atualizar();
+Sistema();
+void iniciar();
+void atualizar();
 };

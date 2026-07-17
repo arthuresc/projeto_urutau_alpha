@@ -19,7 +19,9 @@ Sistema::Sistema()
       tempoInicioRega(0), duracaoRegaMs(5000),
       horaOn(6), minutoOn(0), horaOff(24), minutoOff(0),
       ultimoTempoRega(0),
-      modoHUD(false)
+      modoHUD(false),
+      ultimoSerialReport(0),
+      serialReportIntervalMs(5000)
 {
 }
 
@@ -29,6 +31,10 @@ void Sistema::iniciar() {
     // 1. Inicializar barramentos I2C
     Wire.begin(21, 22);      // I2C0 (display, sensores internos, RTC)
     Wire1.begin(33, 32);     // I2C1 (SDA=33, SCL=32 para SHT40 externo)
+
+    // I2C scan para facilitar debug: lista endereços encontrados em ambos barramentos
+    i2cScan(Wire, "I2C0");
+    i2cScan(Wire1, "I2C1");
 
     // 2. Display
     display.init();
@@ -159,6 +165,26 @@ void Sistema::atualizar() {
     sensorExterno.atualizar();
     sensorLuz.atualizar();
 
+    // Serial input: comandos manuais
+    if (Serial.available()) {
+        String cmd = Serial.readStringUntil('\n');
+        cmd.trim();
+        if (cmd.length() > 0) {
+            if (cmd == "t" || cmd == "T") {
+                Serial.println("[Sistema] Comando: selfTest() iniciado para sensores SHT");
+                sensorInterno.selfTest();
+                sensorExterno.selfTest();
+            } else if (cmd == "r" || cmd == "R") {
+                // imprimir leituras atuais
+                Serial.println("[Sistema] Leituras atuais:");
+                Serial.println("  " + sensorInterno.getNome() + " T=" + String(sensorInterno.getTemperatura()) + "C H=" + String(sensorInterno.getUmidade()));
+                Serial.println("  " + sensorExterno.getNome() + " T=" + String(sensorExterno.getTemperatura()) + "C H=" + String(sensorExterno.getUmidade()));
+            } else {
+                Serial.println("[Sistema] Comando desconhecido: " + cmd + " (t=selfTest, r=relatorio)");
+            }
+        }
+    }
+
     if (modoHUD) {
         if (btEnter.wasPressed()) {
             modoHUD = false;
@@ -194,6 +220,24 @@ void Sistema::atualizar() {
     if (buttonPressed || (agora - ultimoDisplay >= 500)) {
         ultimoDisplay = agora;
         atualizarDisplaySistema();
+    }
+
+    // Relatório periódico em Serial das leituras dos sensores (ajustável)
+    unsigned long now = millis();
+    if (now - ultimoSerialReport >= serialReportIntervalMs) {
+        ultimoSerialReport = now;
+        Serial.print("[Leituras] ");
+        if (sensorInterno.estaAtivo()) {
+            Serial.print(sensorInterno.getNome() + ": T=" + String(sensorInterno.getTemperatura(), 1) + "C H=" + String(sensorInterno.getUmidade(), 1) + "%  ");
+        } else {
+            Serial.print(sensorInterno.getNome() + ": INATIVO  ");
+        }
+        if (sensorExterno.estaAtivo()) {
+            Serial.print(sensorExterno.getNome() + ": T=" + String(sensorExterno.getTemperatura(), 1) + "C H=" + String(sensorExterno.getUmidade(), 1) + "%");
+        } else {
+            Serial.print(sensorExterno.getNome() + ": INATIVO");
+        }
+        Serial.println("");
     }
 }
 
@@ -302,4 +346,23 @@ void Sistema::atualizarDisplaySistema() {
 
     render.carregar(tela);
     render.desenhar();
+}
+
+void Sistema::i2cScan(TwoWire& bus, const String& name) {
+    Serial.println("[I2C_SCAN] Scanning bus: " + name);
+    bool found = false;
+    for (uint8_t addr = 1; addr < 127; ++addr) {
+        bus.beginTransmission(addr);
+        uint8_t res = bus.endTransmission();
+        if (res == 0) {
+            Serial.print("  Found device at 0x");
+            if (addr < 16) Serial.print("0");
+            Serial.print(String(addr, HEX));
+            Serial.print(" (addr=");
+            Serial.print(addr);
+            Serial.println(")");
+            found = true;
+        }
+    }
+    if (!found) Serial.println("  Nenhum dispositivo I2C encontrado neste barramento.");
 }
