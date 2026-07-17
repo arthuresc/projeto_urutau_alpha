@@ -76,6 +76,11 @@ void Sistema::iniciar() {
     sensorInterno.iniciar();
     sensorExterno.iniciar();
     sensorLuz.iniciar();
+
+    // Fazer self-test rápido dos sensores SHT40 para feedback imediato
+    sensorInterno.selfTest();
+    sensorExterno.selfTest();
+
     // sensores de solo não precisam de init, apenas pinMode nos pinos (feito no construtor)
     for (int i=0; i<4; i++) pinMode(pinosSolo[i], INPUT);
 
