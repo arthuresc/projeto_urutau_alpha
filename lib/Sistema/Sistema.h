@@ -59,6 +59,11 @@ private:
 unsigned long ultimoSerialReport;
 unsigned long serialReportIntervalMs;
 
+// Re-init automático sensores
+unsigned long lastInitAttemptInterno;
+unsigned long lastInitAttemptExterno;
+unsigned long sensorInitRetryIntervalMs;
+
 // Métodos internos
 void construirMenu();
 void aplicarPerfil(const String& nome);
@@ -66,7 +71,7 @@ void atualizarCicloLuz();
 void atualizarCicloRega();
 void atualizarHUD();
 void atualizarDisplaySistema();
-void i2cScan(TwoWire& bus, const String& name); // scan helper
+void i2cScan(TwoWire& bus, const String& name, bool showOnDisplay = true); // scan helper
 
 public:
 Sistema();

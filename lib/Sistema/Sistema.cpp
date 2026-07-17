@@ -21,7 +21,10 @@ Sistema::Sistema()
       ultimoTempoRega(0),
       modoHUD(false),
       ultimoSerialReport(0),
-      serialReportIntervalMs(5000)
+      serialReportIntervalMs(5000),
+      lastInitAttemptInterno(0),
+      lastInitAttemptExterno(0),
+      sensorInitRetryIntervalMs(10000) // tenta re-init a cada 10s se inativo
 {
 }
 
@@ -164,6 +167,29 @@ void Sistema::atualizar() {
     sensorInterno.atualizar();
     sensorExterno.atualizar();
     sensorLuz.atualizar();
+
+    // Re-init automático: se sensor marcado inativo, tentar reinicializar periodicamente
+    unsigned long nowMs = millis();
+    if (!sensorInterno.estaAtivo() && (nowMs - lastInitAttemptInterno >= sensorInitRetryIntervalMs)) {
+        Serial.println("[Sistema] Tentando re-inicializar " + sensorInterno.getNome());
+        lastInitAttemptInterno = nowMs;
+        if (sensorInterno.iniciar()) {
+            Serial.println("[Sistema] Re-init OK: " + sensorInterno.getNome());
+            sensorInterno.selfTest();
+        } else {
+            Serial.println("[Sistema] Re-init falhou: " + sensorInterno.getNome());
+        }
+    }
+    if (!sensorExterno.estaAtivo() && (nowMs - lastInitAttemptExterno >= sensorInitRetryIntervalMs)) {
+        Serial.println("[Sistema] Tentando re-inicializar " + sensorExterno.getNome());
+        lastInitAttemptExterno = nowMs;
+        if (sensorExterno.iniciar()) {
+            Serial.println("[Sistema] Re-init OK: " + sensorExterno.getNome());
+            sensorExterno.selfTest();
+        } else {
+            Serial.println("[Sistema] Re-init falhou: " + sensorExterno.getNome());
+        }
+    }
 
     // Serial input: comandos manuais
     if (Serial.available()) {
@@ -348,21 +374,38 @@ void Sistema::atualizarDisplaySistema() {
     render.desenhar();
 }
 
-void Sistema::i2cScan(TwoWire& bus, const String& name) {
+void Sistema::i2cScan(TwoWire& bus, const String& name, bool showOnDisplay) {
     Serial.println("[I2C_SCAN] Scanning bus: " + name);
     bool found = false;
+    String addrList = "";
     for (uint8_t addr = 1; addr < 127; ++addr) {
         bus.beginTransmission(addr);
         uint8_t res = bus.endTransmission();
         if (res == 0) {
-            Serial.print("  Found device at 0x");
-            if (addr < 16) Serial.print("0");
-            Serial.print(String(addr, HEX));
+            char buf[8];
+            snprintf(buf, sizeof(buf), "0x%02X", addr);
+            Serial.print("  Found device at ");
+            Serial.print(buf);
             Serial.print(" (addr=");
             Serial.print(addr);
             Serial.println(")");
+            if (addrList.length() > 0) addrList += ",";
+            addrList += String(buf);
             found = true;
         }
     }
-    if (!found) Serial.println("  Nenhum dispositivo I2C encontrado neste barramento.");
+    if (!found) {
+        Serial.println("  Nenhum dispositivo I2C encontrado neste barramento.");
+        addrList = "Nenhum";
+    }
+
+    // Mostrar resultado resumido no display (se solicitado)
+    if (showOnDisplay) {
+        // Se a string for muito longa, mostre apenas prefixo
+        String shortList = addrList;
+        if (shortList.length() > 16) shortList = shortList.substring(0, 16) + "..";
+        display.update(name, shortList);
+        delay(800);
+        // depois volta ao status normal (display será atualizado em seguida)
+    }
 }
