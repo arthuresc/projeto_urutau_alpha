@@ -13,7 +13,12 @@ bool DataLogger::iniciar() {
     if (rtc.begin()) {
         rtcAtivo = true;
         Serial.println("[DataLogger] RTC iniciado.");
-        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        
+        // Se o RTC está parado (perdeu bateria), ajusta com hora de compilação
+        if (!rtc.isrunning()) {
+            Serial.println("[DataLogger] RTC parado. Ajustando com hora de compilação.");
+            rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        }
     } else {
         Serial.println("[DataLogger] ERRO: RTC ausente.");
     }
@@ -28,12 +33,22 @@ bool DataLogger::iniciar() {
 }
 
 void DataLogger::registrar(const String& dados) {
-    if (!sdAtivo) return;
+    if (!sdAtivo) {
+        Serial.println("[DataLogger] SD nao ativo. Dado nao registrado: " + dados);
+        return;
+    }
+    
     File arq = SD.open("/grow_log.csv", FILE_APPEND);
-    if (arq) {
-        if (rtcAtivo) arq.print(formatDateTime(rtc.now()) + ",");
-        else arq.print("SEM_RTC,");
-        arq.println(dados);
-        arq.close();
+    if (!arq) {
+        Serial.println("[DataLogger] ERRO: Nao conseguiu abrir arquivo de log.");
+        return;
+    }
+    
+    if (rtcAtivo) arq.print(formatDateTime(rtc.now()) + ",");
+    else arq.print("SEM_RTC,");
+    arq.println(dados);
+    
+    if (!arq.close()) {
+        Serial.println("[DataLogger] AVISO: Erro ao fechar arquivo de log.");
     }
 }

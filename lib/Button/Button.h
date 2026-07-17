@@ -8,6 +8,8 @@ class Button {
     bool lastRawState;
     unsigned long lastDebounceTime;
     unsigned long debounceDelay;
+    bool waitingForRelease;
+    unsigned long pressTime;
 
   public:
     Button(uint8_t buttonPin, unsigned long debounceMs = 50);

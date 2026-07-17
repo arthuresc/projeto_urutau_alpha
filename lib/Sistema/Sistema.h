@@ -50,7 +50,7 @@ private:
     unsigned long duracaoRegaMs;
     int horaOn, minutoOn, horaOff, minutoOff;
     std::vector<int> minutosRega;
-    int ultimoMinutoRega;
+    unsigned long ultimoTempoRega;  // timestamp da última rega (evita múltiplos disparos no mesmo minuto)
 
     bool modoHUD;
     unsigned long ultimoDisplay;

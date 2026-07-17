@@ -4,27 +4,31 @@ Sistema::Sistema()
     : btUp(13), btDown(34), btEnter(15),
       display(), render(display),
       luz(12, false),          // relé lâmpadas (LOW ligado)
+      led(2, false),           // relé LED (GPIO 2)
       coolerVentilacao(26, false),
       coolerExaustao(27, false),
+      coolerMovimentacao(25, false),
       valvulaRega(14, false),
       sensorInterno(&Wire),    // I2C0
       sensorExterno(&Wire1),   // I2C1
       sensorLuz(),
       menu(), ultimoDisplay(0),
       config(), gerenciador(config),
+      logger(),                // Logger inicializado
       perfilAtivo(""), luzLigada(false), regaEmAndamento(false),
       tempoInicioRega(0), duracaoRegaMs(5000),
       horaOn(6), minutoOn(0), horaOff(24), minutoOff(0),
-      ultimoMinutoRega(-1),
+      ultimoTempoRega(0),
       modoHUD(false)
 {
 }
 
 void Sistema::iniciar() {
     Serial.begin(9600);
+    
     // 1. Inicializar barramentos I2C
-    // Wire.begin(21, 22);      // I2C0 (display, sensores internos, RTC)
-    Wire1.begin(33, 32);     // I2C1 (SHT40 externo)
+    Wire.begin(21, 22);      // I2C0 (display, sensores internos, RTC)
+    Wire1.begin(33, 32);     // I2C1 (SDA=33, SCL=32 para SHT40 externo)
 
     // 2. Display
     display.init();
@@ -51,8 +55,15 @@ void Sistema::iniciar() {
     perfilAtivo = config.get("PERFIL_ATIVO", "");
     if (perfilAtivo.isEmpty() || !gerenciador.obterPorNome(perfilAtivo)) {
         // Usar o primeiro perfil carregado
-        perfilAtivo = gerenciador.obter(0)->nome;
-        Serial.println("[Sistema] Nenhum perfil ativo definido, usando primeiro: " + perfilAtivo);
+        DadosPerfil* primeiroPerfil = gerenciador.obter(0);
+        if (primeiroPerfil) {
+            perfilAtivo = primeiroPerfil->nome;
+            Serial.println("[Sistema] Nenhum perfil ativo definido, usando primeiro: " + perfilAtivo);
+        } else {
+            Serial.println("[Sistema] ERRO: Nenhum perfil disponível.");
+            display.update("ERRO", "Sem perfis");
+            while (1) { delay(1000); }
+        }
     }
 
     // 7. Construir menu dinâmico
@@ -186,6 +197,7 @@ void Sistema::atualizarCicloRega() {
 
     DateTime agora = logger.getRTC().now();
     int minutoAtual = agora.hour() * 60 + agora.minute();
+    unsigned long tempoAgora = agora.unixtime();
 
     // Rega em andamento: verifica se terminou
     if (regaEmAndamento) {
@@ -199,19 +211,17 @@ void Sistema::atualizarCicloRega() {
 
     // Verifica se o minuto atual coincide com algum horário agendado
     for (int minAgendado : minutosRega) {
-        if (minutoAtual == minAgendado && minutoAtual != ultimoMinutoRega) {
-            valvulaRega.ligar();
-            regaEmAndamento = true;
-            tempoInicioRega = millis();
-            ultimoMinutoRega = minutoAtual;
-            logger.registrar("EVENTO,REGA,INICIO," + String(agora.hour()) + ":" + String(agora.minute()));
-            break;
+        if (minutoAtual == minAgendado) {
+            // Evita disparar novamente no mesmo minuto (com margem de 60 segundos)
+            if (tempoAgora - ultimoTempoRega >= 60) {
+                valvulaRega.ligar();
+                regaEmAndamento = true;
+                tempoInicioRega = millis();
+                ultimoTempoRega = tempoAgora;
+                logger.registrar("EVENTO,REGA,INICIO," + String(agora.hour()) + ":" + String(agora.minute()));
+                break;
+            }
         }
-    }
-
-    // Reseta o ultimoMinutoRega na virada do dia
-    if (agora.hour() == 0 && agora.minute() == 0) {
-        ultimoMinutoRega = -1;
     }
 }
 

@@ -36,16 +36,18 @@ bool Configuracao::carregarDoSD(const String& caminho) {
         }
 
         int separador = linha.indexOf('=');
-        if (separador > 0) {
+        if (separador > 0 && separador < linha.length() - 1) {
             String chave = linha.substring(0, separador);
             String valor = linha.substring(separador + 1);
             chave.trim();
             valor.trim();
 
-            if (secaoAtual.length() == 0) {
-                dados[chave] = valor;          // parâmetro global
-            } else {
-                secoes[secaoAtual][chave] = valor;  // dentro da seção
+            if (chave.length() > 0) {
+                if (secaoAtual.length() == 0) {
+                    dados[chave] = valor;          // parâmetro global
+                } else {
+                    secoes[secaoAtual][chave] = valor;  // dentro da seção
+                }
             }
         }
     }

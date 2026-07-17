@@ -7,7 +7,7 @@
 
 Sistema sistema;
 
-CoolerPWM exaustor(16, 17); // pino 16, canal 0
+// CoolerPWM exaustor(16, 17); // pino 16, canal 0
 
 // #define CS 5 // adicione outros se quiser
 

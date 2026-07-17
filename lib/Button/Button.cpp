@@ -5,7 +5,9 @@ Button::Button(uint8_t buttonPin, unsigned long debounceMs)
 lastStableState(HIGH), 
 lastRawState(HIGH), 
 lastDebounceTime(0), 
-debounceDelay(debounceMs){
+debounceDelay(debounceMs),
+waitingForRelease(false),
+pressTime(0){
   pinMode(pin, INPUT_PULLUP);
 }
 
@@ -57,10 +59,7 @@ bool Button::isPressed() {
 }
 
   
-  bool Button::wasClicked() {
-    static bool waitingForRelease = false;
-    static unsigned long pressTime = 0;
-    
+bool Button::wasClicked() {
     if(isPressed() && !waitingForRelease) {
       waitingForRelease = true;
       pressTime = millis();
@@ -73,7 +72,7 @@ bool Button::isPressed() {
     }
     
     return false;    
-  }
+}
 
 bool Button::readRaw() {
   return digitalRead(pin);
