@@ -22,11 +22,12 @@ private:
 
   String _title;
   String _message;
+  bool _initialized;
 
   bool initDisplay();
   // void printTitle();
   // void printMessage();
-  
+   
   public:
   // Construtor - apenas inicializa variáveis
   // A inicialização real do hardware em init()
@@ -36,7 +37,7 @@ private:
   bool init();
   // bool init(String title, String message);
 
-  void update(String newTitle, String newMessage);
+  void update(const String& newTitle, const String& newMessage);
   void clear();
 
   String getTitle() const { return _title; }

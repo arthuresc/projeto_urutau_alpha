@@ -3,19 +3,20 @@
 Display::Display()
   : display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
     _title("Titulo"),
-    _message("Mensagem") {
-      // O objeto display é construído na lista de inicialização
-      // Não faça inicialização de hardware aqui      
-    }
+    _message("Mensagem"),
+    _initialized(false) {
+    // O objeto display é construído na lista de inicialização
+    // Não faça inicialização de hardware aqui
+}
     
     
     // 3. Construtor com parâmetros
 Display::Display(String title, String message)
   : display(LARGURA_OLED, ALTURA_OLED, &Wire, RESET_OLED),
     _title(title),
-    _message(message) {
-
-  }
+    _message(message),
+    _initialized(false) {
+}
 
 bool Display::initDisplay()
 {
@@ -36,53 +37,47 @@ bool Display::initDisplay()
 
 // 5. Inicialização pública
   bool Display::init() {
-    if(initDisplay()) {
+    _initialized = initDisplay();
+    if (_initialized) {
       update(_title, _message);
-      Serial.println("Teste aqui no INIT não o outro");
-      return true;
+      Serial.println("Teste aqui no INIT");
+    } else {
+      Serial.println("Falha ao inicializar display");
     }
-    return false;
-  }
+    return _initialized;
+}
 
-  void Display::update(String newTitle, String newMessage) {
-    // Verifica necessidade de atualização
-    // if(newTitle.compareTo(Title) != 0 || newMessage.compareTo(Message) != 0) {
-    if(newTitle != _title || newMessage != _message) {
+void Display::update(const String& newTitle, const String& newMessage) {
+    if (!_initialized) {
+      Serial.println("Display não inicializado, pulando update");
+      return;
+    }
+    if (newTitle != _title || newMessage != _message) {
       _title = newTitle;
       _message = newMessage;
-      
-      Serial.println("Entrou como texto no update");
-
+      Serial.println("Display: atualizando texto");
       display.clearDisplay();
-
-      display.fillRect(0,0,128,16, WHITE);
+      display.fillRect(0, 0, 128, 16, WHITE);
       display.setTextColor(BLACK);
-      display.setCursor(2,4);
+      display.setCursor(2, 4);
       display.print(_title);
-
-
       display.setTextColor(WHITE);
       display.setCursor(2, 30);
       display.print(_message);
-
-
-      // Atualiza a tela
       display.display();
     }
-  }
+}
 
   void Display::clear() {
-    display.clearDisplay();
-    display.display();
-
-    _title = "";
-    _message = "";
+  if (!_initialized) {
+    return;
+  }
+  display.clearDisplay();
+  display.display();
+  _title = "";
+  _message = "";
   }
 
-  // 8. Verificação de status
-bool Display::isInitialized() const {
-  // Verifica se o display foi inicializado
-  // A biblioteca Adafruit_SSD1306 não tem um método isInitialized,
-  // então podemos verificar de outra forma
-  return true; // Simplificação - na prática precisa de melhor verificação
-}
+  bool Display::isInitialized() const {
+  return _initialized;
+  }

@@ -43,13 +43,13 @@ void Sistema::iniciar() {
     Wire.begin(21, 22);      // I2C0 (display, sensores internos, RTC)
     Wire1.begin(33, 32);     // I2C1 (SDA=33, SCL=32 para SHT40 externo)
 
-    // I2C scan para facilitar debug: lista endereços encontrados em ambos barramentos
-    i2cScan(Wire, "I2C0", true);
-    i2cScan(Wire1, "I2C1", true);
-
     // 2. Display
     display.init();
     delay(100);
+
+    // I2C scan para facilitar debug: lista endereços encontrados em ambos barramentos
+    i2cScan(Wire, "I2C0", true);
+    i2cScan(Wire1, "I2C1", true);
 
     // 3. Logger (RTC + SD)
     logger.iniciar();
@@ -518,12 +518,10 @@ void Sistema::i2cScan(TwoWire& bus, const String& name, bool showOnDisplay) {
     }
 
     // Mostrar resultado resumido no display (se solicitado)
-    if (showOnDisplay) {
-        // Se a string for muito longa, mostre apenas prefixo
+    if (showOnDisplay && display.isInitialized()) {
         String shortList = addrList;
         if (shortList.length() > 16) shortList = shortList.substring(0, 16) + "..";
         display.update(name, shortList);
         delay(800);
-        // depois volta ao status normal (display será atualizado em seguida)
     }
 }
